@@ -61,6 +61,7 @@ class EMA_Dataset:
 
         ####################################
         ########Adopt fixed 500 ema points
+        ########We should fix t because t is related to H
         ####################################
 
         if ema_data.shape[0] >= 500:
