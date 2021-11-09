@@ -8,8 +8,8 @@ import sys
 def loadWAV(filename, max_points=25744):
     waveform, _ = torchaudio.load(filename)
     #max_audio = max_frames * hop_size + win_length - hop_size
-    if waveform.shape[1] <= max_points:
-        waveform = F.pad(waveform, (0, max_points-waveform.shape[1],0,0), mode='constant', value=0)
+    #if waveform.shape[1] <= max_points:
+    #    waveform = F.pad(waveform, (0, max_points-waveform.shape[1],0,0), mode='constant', value=0)
     #shape of audio is [1, xxxxx]    
     
     return waveform
