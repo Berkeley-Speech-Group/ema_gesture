@@ -5,8 +5,9 @@ import numpy as np
 import os
 import sys
 
-def loadWAV(filename, max_points=25744):
-    waveform, _ = torchaudio.load(filename)
+def loadWAV(filename, max_points=32000):
+    waveform, sr = torchaudio.load(filename) #sr=16000
+
     #max_audio = max_frames * hop_size + win_length - hop_size
     #if waveform.shape[1] <= max_points:
     #    waveform = F.pad(waveform, (0, max_points-waveform.shape[1],0,0), mode='constant', value=0)
@@ -43,25 +44,36 @@ class EMA_Dataset:
                     continue
                 wav_path = os.path.join(wav_dir, wav)
                 self.wav_paths.append(wav_path)
+        #print(len(self.ema_npy_paths)) #4409
+        #print(len(self.ema_paths)) #4409
+        #print(len(self.wav_paths)) #4579
                
-            
     def __len__(self): #4579
-        return len(self.wav_paths)
+        return len(self.ema_npy_paths)
     def __getitem__(self, index):
-        wav_path = self.wav_paths[index]
-        waveform = loadWAV(wav_path) #shape is [1, num_points]
-        
+        #wav_path = self.wav_paths[index]
+        #waveform = loadWAV(wav_path) #shape is [1, num_points]
         ema_npy_path = self.ema_npy_paths[index]
         ema_data = torch.FloatTensor(np.load(ema_npy_path))
-        print(ema_data.shape)
-        #print(waveform.shape)
+        #print(ema_data.shape) #(T_ema, 12)
+        #print(waveform.shape) #(1, T_wav)
+        #print(ema_data.shape[0]/waveform.shape[1])
+
+        ####################################
+        ########Adopt fixed 500 ema points
+        ####################################
+
+        if ema_data.shape[0] >= 500:
+            ema_data = ema_data[:500]
+        else:
+            ema_data = F.pad(ema_data, pad=(0, 0, 0, 500-ema_data.shape[0]), mode='constant', value=0)
         
-        return waveform, ema_data
+        return ema_data
 
 
 if __name__ == "__main__":
     dataset = EMA_Dataset()
-    dataset[0]
-
+    dataset[0] #wav is [1, 63490], ema is [724, 12] , sr for ema is 182.45
+    dataset[1] #wav is [1, 55494], ema is [802, 12] , sr for ema is 231.23
     
 
