@@ -8,5 +8,7 @@ ema_dataloader = torch.utils.data.DataLoader(dataset=ema_dataset, batch_size=1, 
 model = CSNMF()
 
 for i, ema in enumerate(ema_dataloader):
-    print(ema.shape) #[1,t=500,12]
+    #print(ema.shape) #[1,t=500,12]
+    
+    model(ema)
 
