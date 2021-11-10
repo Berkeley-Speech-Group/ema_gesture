@@ -48,3 +48,20 @@ class AE_CSNMF(nn.Module):
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2)
         return x, inp_hat
+
+    def loadParameters(self, path):
+        self_state = self.state_dict()
+        loaded_state = torch.load(path)
+        for name, param in loaded_state.items():
+            origname = name
+            if name not in self_state:
+                name = name.replace("module.", "")
+                if name not in self_state:
+                    print("%s is not in the model."%origname)
+                    continue
+
+            if self_state[name].size() != loaded_state[origname].size():
+                print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
+                continue
+        
+            self_state[name].copy_(param)
