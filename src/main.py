@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 from dataloader import EMA_Dataset
 from models.csnmf import CSNMF,AE_CSNMF
 import sys
@@ -22,6 +23,8 @@ args = parser.parse_args()
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
 def trainer(model, optimizer):
+    writer = SummaryWriter()
+    count = 0
     for e in range(args.num_epochs):
         loss_e = []
         for i, ema in enumerate(ema_dataloader):
@@ -39,6 +42,8 @@ def trainer(model, optimizer):
             optimizer.step()
             sys.stdout.write(" loss=%.4f " %(loss.item()))
             loss_e.append(loss.item())
+            writer.add_scalar('Loss_train', loss.item(), count)
+            count += 1
         print("| Avg Loss in Epoch %d is %.4f" %(e, sum(loss_e)/len(loss_e)))
         
 
