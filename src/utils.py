@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import os
 
 def vis_kinematics(model, **args):
@@ -9,34 +10,37 @@ def vis_kinematics(model, **args):
     ema_id = args['test_ema_path'].split("/")[-1][:-4]
     x = np.arange(ema_data.shape[0])
 
-    fig, axs = plt.subplots(12)
-    colors = ['b', 'g', 'r', 'c', 'm', 'y']
+    fig = plt.figure(figsize=(10, 8))
     fig.suptitle(ema_id+"_ori")
-    for i in range(12):
-        axs[i].plot(x, ema_data[:,i],c=colors[i//2])
-        axs[i].spines['top'].set_visible(False)
-        axs[i].spines['right'].set_visible(False)
-        axs[i].spines['bottom'].set_visible(False)
-        axs[i].spines['left'].set_visible(False)
-        axs[i].get_xaxis().set_ticks([])
-        axs[i].get_yaxis().set_ticks([])
+    colors = ['b', 'g', 'r', 'c', 'm', 'y']
 
-    # axs[i].plot(x, ema_data[:,i])
-    # plt.plot(x, ema_data[:,1])
-    # plt.plot(x, ema_data[:,2])
-    # plt.plot(x, ema_data[:,3])
-    # plt.plot(x, ema_data[:,4])
-    # plt.plot(x, ema_data[:,5])
-    # plt.plot(x, ema_data[:,6])
-    # plt.plot(x, ema_data[:,7])
-    # plt.plot(x, ema_data[:,8])
-    # plt.plot(x, ema_data[:,9])
-    # plt.plot(x, ema_data[:,10])
-    # plt.plot(x, ema_data[:,11])
+    outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
+    labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
+    for i in range(6):
+        inner = gridspec.GridSpecFromSubplotSpec(2, 1,
+                        subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+
+        for j in range(2):
+            ax = plt.Subplot(fig, inner[j])
+            ax.plot(x, ema_data[:,i*2+j],c=colors[i])
+            ax.set_xticks([])
+            ax.set_yticks([])
+            fig.add_subplot(ax)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            ax.get_xaxis().set_ticks([])
+            ax.get_yaxis().set_ticks([])
+            if j == 0:
+                ax.set_ylabel(labels[i]+' x',rotation=0)
+            else:
+                ax.set_ylabel(labels[i]+' y',rotation=0)
+            ax.yaxis.set_label_coords(-0.05,0.5)
 
     plt.savefig(os.path.join(args['save_path'], "ori_"+ema_id+".png"))
     plt.clf()
-    return None
+    
 
 def vis_gestures(model, **args):
     return None
