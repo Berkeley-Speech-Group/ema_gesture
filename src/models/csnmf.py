@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class CSNMF(nn.Module):
-    def __init__(self):
+#The Vanilla CNMF model is only able to train the huge kinematics signal
+class CNMF(nn.Module):
+    def __init__(self, **args):
         super().__init__()
         #shape of X is [1, t, 12]
-        self.win_size = 10
+        self.win_size = args['win_suze']
         self.t = 500
         self.num_pellets = 12
         self.num_gestures = 100

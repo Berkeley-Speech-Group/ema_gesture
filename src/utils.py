@@ -12,23 +12,24 @@ def vis_kinematics(model, **args):
     ############The Original Data
     #####################################
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    draw_kinematics(ema_data, mode='ori', **args)
+    ema_id = args['test_ema_path'].split("/")[-1][:-4]
+    draw_kinematics(ema_data, mode=ema_id+'_ori', **args)
 
     ######################################
     ############Reconstruction
     #####################################
     ema_ori, ema_hat = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
-    draw_kinematics(ema_data_hat, mode='rec', **args) 
+    draw_kinematics(ema_data_hat, mode=ema_id+'_rec', **args) 
     
 
 def draw_kinematics(ema_data, mode, **args):
     
-    ema_id = args['test_ema_path'].split("/")[-1][:-4]
+    
     x = np.arange(ema_data.shape[0])
 
     fig = plt.figure(figsize=(10, 8))
-    fig.suptitle(ema_id+"_"+mode)
+    fig.suptitle(mode)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
 
     outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
@@ -55,8 +56,10 @@ def draw_kinematics(ema_data, mode, **args):
                 ax.set_ylabel(labels[i]+' y',rotation=0)
             ax.yaxis.set_label_coords(-0.05,0.5)
 
-    plt.savefig(os.path.join(args['save_path'], mode+"_"+ema_id+".png"))
+    plt.savefig(os.path.join(args['save_path'], mode+"_"+".png"))
     plt.clf()
 
 def vis_gestures(model, **args):
-    return None
+    gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
+    draw_kinematics(gestures[:,0,1,:].transpose(0,1).detach().numpy(), mode='gesture', **args)
+    

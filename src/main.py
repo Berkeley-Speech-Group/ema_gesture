@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 from dataloader import EMA_Dataset
-from models.csnmf import CSNMF,AE_CSNMF, AE_CNMF
+from models.csnmf import CNMF,AE_CSNMF, AE_CNMF
 from utils import vis_gestures, vis_kinematics
 
 import warnings
@@ -120,6 +120,7 @@ if __name__ == "__main__":
         vis_kinematics(model, **vars(args))
         exit()
     if args.vis_gestures:
+        vis_gestures(model, **vars(args))
         exit()
 
     #if there is no eval task, start training:
