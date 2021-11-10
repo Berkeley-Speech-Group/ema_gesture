@@ -1,1 +1,5 @@
 emadata
+save_models
+runs
+.ipynb_checkpoints
+_pycache_
