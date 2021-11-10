@@ -1,4 +1,4 @@
-# ema_gesture
+# Gestural Unit Discovery
 
 A Pytorch Implementation of (Varitional) Auto-Encoder Convolutional Non-Negative Matrix Factorization for Gestural Unit Discovery
 
