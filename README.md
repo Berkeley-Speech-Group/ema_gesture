@@ -6,6 +6,10 @@ A Pytorch Implementation of (Varitional) Auto-Encoder Convolutional Non-Negative
 
 EMA
 
+```
+python ./src/preprocess/nema2npy.py
+```
+
 ### Train
 
 
