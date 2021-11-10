@@ -4,7 +4,9 @@ A Pytorch Implementation of (Varitional) Auto-Encoder Convolutional Non-Negative
 
 ## Datasets
 
-EMA
+First, download EMA data from http://tts.speech.cs.cmu.edu/gopalakr/emadata.tgz, untar it. Check .gitignore for the path of "emadata". 
+
+Second, convert the normalized ema kinematics data(nema) to npy.
 
 ```
 python ./src/preprocess/nema2npy.py
