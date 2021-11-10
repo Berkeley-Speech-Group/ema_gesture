@@ -25,37 +25,26 @@ class CSNMF(nn.Module):
         return inp, inp_hat
 
 class AE_CSNMF(nn.Module):
-    def __init__(self):
+    def __init__(self,**args):
         super().__init__()
 
-        #shape of X is [1, t, 12]
-        self.win_size = 10
-        self.t = 500
-        self.num_pellets = 12
-        self.num_gestures = 100
+        self.win_size = args['win_size']
+        self.t = args['segment_len']
+        self.num_pellets = args['num_pellets']
+        self.num_gestures = args['num_gestures']
         self.conv_encoder = nn.ConvTranspose2d(in_channels=self.num_pellets,out_channels=1,kernel_size=(self.num_gestures,self.win_size),padding=0)
         self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
 
 
-    def forward(self, inp):
-        #inp shape is [B,t,num_pellets]
-        inp = inp.transpose(-1, -2) #[B, num_pellets, t]
-        batch_size = inp.shape[0]
-
-        
+    def forward(self, x):
+        #shape of x is [B,t,num_pellets]
+        x = x.transpose(-1, -2) #[B, num_pellets, t]
         #print("before unsqueeze, inp_shape",inp.shape)
-        inp = inp.unsqueeze(-2)
+        inp = x.unsqueeze(-2)
         #print("after unsqueeze, inp_shape",inp.shape)
-
-        
         H = self.conv_encoder(inp)
         #print("after encoder, H_shape", H.shape)
-
         H = H[:,:,:,:self.t]
-
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2)
-        #print("inp_hat", inp_hat.shape)
-
-        
-        return inp, inp_hat
+        return x, inp_hat
