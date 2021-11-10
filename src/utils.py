@@ -5,13 +5,30 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import os
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
+
 def vis_kinematics(model, **args):
+    ######################################
+    ############The Original Data
+    #####################################
     ema_data = np.load(args['test_ema_path']) #[t, 12]
+    draw_kinematics(ema_data, mode='ori', **args)
+
+    ######################################
+    ############Reconstruction
+    #####################################
+    _, ema_hat = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
+    draw_kinematics(ema_data_hat, mode='rec', **args) 
+    
+
+def draw_kinematics(ema_data, mode, **args):
+    
     ema_id = args['test_ema_path'].split("/")[-1][:-4]
     x = np.arange(ema_data.shape[0])
 
     fig = plt.figure(figsize=(10, 8))
-    fig.suptitle(ema_id+"_ori")
+    fig.suptitle(ema_id+"_"+mode)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
 
     outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
@@ -38,9 +55,8 @@ def vis_kinematics(model, **args):
                 ax.set_ylabel(labels[i]+' y',rotation=0)
             ax.yaxis.set_label_coords(-0.05,0.5)
 
-    plt.savefig(os.path.join(args['save_path'], "ori_"+ema_id+".png"))
+    plt.savefig(os.path.join(args['save_path'], mode+"_"+ema_id+".png"))
     plt.clf()
-    
 
 def vis_gestures(model, **args):
     return None

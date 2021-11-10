@@ -45,7 +45,7 @@ class AE_CSNMF(nn.Module):
         #print("after encoder, H_shape", H.shape)
         H = H[:,:,:,:self.t]
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
-        inp_hat = self.conv_decoder(H).squeeze(dim=-2)
+        inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
         return x, inp_hat
 
     def loadParameters(self, path):

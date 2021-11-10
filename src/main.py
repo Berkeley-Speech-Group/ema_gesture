@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     ema_dataset = EMA_Dataset(**vars(args))     
     ema_dataloader = torch.utils.data.DataLoader(dataset=ema_dataset, batch_size=args.batch_size, shuffle=True)
-    model = AE_CSNMF(**vars(args))
+    model = AE_CSNMF(**vars(args)).to(device)
 
     if not os.path.exists(args.model_path):
         print("Model not exist and we just create the new model......")
