@@ -3,4 +3,7 @@ save_models
 runs
 .ipynb_checkpoints
 _pycache_
-_DS_Store
+.DS_Store
+src/_*
+src/models/_*
+src/.ipynb*

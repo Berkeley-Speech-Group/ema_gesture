@@ -25,6 +25,7 @@ class EMA_Dataset:
         self.wav_paths = []
         self.ema_paths = []
         self.ema_npy_paths = []
+        self.eval = args['vis_kinemarics'] or args['vis_gestures']
         
         for spk_id in os.listdir(path):
             if not spk_id.startswith('cin'):
@@ -66,11 +67,12 @@ class EMA_Dataset:
         ########We should fix t because t is related to H
         ####################################
 
-        if ema_data.shape[0] >= self.segment_len:
-            start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
-            ema_data = ema_data[start_point:start_point+self.segment_len]
-        else:
-            ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
+        if not self.eval:
+            if ema_data.shape[0] >= self.segment_len:
+                start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
+                ema_data = ema_data[start_point:start_point+self.segment_len]
+            else:
+                ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
         
         return ema_data
 
