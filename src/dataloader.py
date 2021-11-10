@@ -2,6 +2,7 @@ import torchaudio
 import torch
 import torch.nn.functional as F
 import numpy as np
+import random
 import os
 import sys
 
@@ -17,9 +18,10 @@ def loadWAV(filename, max_points=32000):
 
 class EMA_Dataset:
     
-    def __init__(self, path='emadata'):
+    def __init__(self, path='emadata', **args):
         
         #record paths for wav file and nema file
+        self.segment_len = args['segment_len']
         self.wav_paths = []
         self.ema_paths = []
         self.ema_npy_paths = []
@@ -64,10 +66,11 @@ class EMA_Dataset:
         ########We should fix t because t is related to H
         ####################################
 
-        if ema_data.shape[0] >= 500:
-            ema_data = ema_data[:500]
+        if ema_data.shape[0] >= self.segment_len:
+            start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
+            ema_data = ema_data[start_point:start_point+self.segment_len]
         else:
-            ema_data = F.pad(ema_data, pad=(0, 0, 0, 500-ema_data.shape[0]), mode='constant', value=0)
+            ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
         
         return ema_data
 

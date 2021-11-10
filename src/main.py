@@ -49,7 +49,7 @@ def trainer(model, optimizer):
 
 if __name__ == "__main__":
     torch.manual_seed(0)
-    ema_dataset = EMA_Dataset()     
+    ema_dataset = EMA_Dataset(**vars(args))     
     ema_dataloader = torch.utils.data.DataLoader(dataset=ema_dataset, batch_size=args.batch_size, shuffle=True)
     model = AE_CSNMF(**vars(args)).to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
