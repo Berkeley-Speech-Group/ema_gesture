@@ -35,7 +35,6 @@ class AE_CSNMF(nn.Module):
         self.conv_encoder = nn.ConvTranspose2d(in_channels=self.num_pellets,out_channels=1,kernel_size=(self.num_gestures,self.win_size),padding=0)
         self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
 
-
     def forward(self, x):
         #shape of x is [B,t,num_pellets]
         x = x.transpose(-1, -2) #[B, num_pellets, t]
@@ -52,7 +51,7 @@ class AE_CSNMF(nn.Module):
     def loadParameters(self, path):
         self_state = self.state_dict()
         loaded_state = torch.load(path)
-        
+
         for name, param in loaded_state.items():
             origname = name
             if name not in self_state:

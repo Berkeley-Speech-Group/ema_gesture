@@ -25,7 +25,7 @@ class EMA_Dataset:
         self.wav_paths = []
         self.ema_paths = []
         self.ema_npy_paths = []
-        self.eval = args['vis_kinemarics'] or args['vis_gestures']
+        self.eval = args['vis_kinematics'] or args['vis_gestures']
         
         for spk_id in os.listdir(path):
             if not spk_id.startswith('cin'):

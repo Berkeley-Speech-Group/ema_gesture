@@ -1,14 +1,18 @@
+import sys
+import argparse
+import os
+import random
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+
 from dataloader import EMA_Dataset
 from models.csnmf import CSNMF,AE_CSNMF
-import sys
-import argparse
-import os
-import random
+from utils import vis_gestures, vis_kinematics
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -53,9 +57,8 @@ def trainer(model, optimizer, lr_scheduler):
         for i, ema in enumerate(ema_dataloader):
             #ema.shape #[batch_size,segment_len,num_pellets]
             ema = ema.to(device)
-            batch_size = ema.shape[0]
             training_size = len(ema_dataset)
-            sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/batch_size))
+            sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args.batch_size))
             model.train()
             optimizer.zero_grad()
             ema = ema.to(device)
@@ -105,8 +108,8 @@ if __name__ == "__main__":
                     name = name.replace("module.", "")
                 if name in model.state_dict():
                     if model.state_dict()[name].size() != param.size():
-                        print("Wrong parameter length: %s, model: %s, loaded: %s"%(name, model.state_dict()[name].size(), param.size()));
-                        continue;
+                        print("Wrong parameter length: %s, model: %s, loaded: %s"%(name, model.state_dict()[name].size(), param.size()))
+                        continue
                     model.state_dict()[name].copy_(param) 
                 else:
                     print(name + " is not existed!")
@@ -114,10 +117,13 @@ if __name__ == "__main__":
             model.loadParameters(args.model_path)
 
     if args.vis_kinematics:
+        vis_kinematics(model, **vars(args))
         exit()
     if args.vis_gestures:
         exit()
 
+
+    #if there is no eval task, start training:
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=args.step_size, gamma=args.lr_decay_rate)
     trainer(model, optimizer, lr_scheduler)
