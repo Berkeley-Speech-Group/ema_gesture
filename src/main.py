@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 from dataloader import EMA_Dataset
-from models.csnmf import CSNMF,AE_CSNMF
+from models.csnmf import CSNMF,AE_CSNMF, AE_CNMF
 from utils import vis_gestures, vis_kinematics
 
 import warnings
@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     ema_dataset = EMA_Dataset(**vars(args))     
     ema_dataloader = torch.utils.data.DataLoader(dataset=ema_dataset, batch_size=args.batch_size, shuffle=True)
-    model = AE_CSNMF(**vars(args)).to(device)
+    model = AE_CNMF(**vars(args)).to(device)
 
     if not os.path.exists(args.model_path):
         print("Model not exist and we just create the new model......")
@@ -121,7 +121,6 @@ if __name__ == "__main__":
         exit()
     if args.vis_gestures:
         exit()
-
 
     #if there is no eval task, start training:
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)

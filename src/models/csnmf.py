@@ -24,6 +24,47 @@ class CSNMF(nn.Module):
         
         return inp, inp_hat
 
+class AE_CNMF(nn.Module):
+    def __init__(self,**args):
+        super().__init__()
+
+        self.win_size = args['win_size']
+        self.t = args['segment_len']
+        self.num_pellets = args['num_pellets']
+        self.num_gestures = args['num_gestures']
+        self.conv_encoder = nn.ConvTranspose2d(in_channels=self.num_pellets,out_channels=1,kernel_size=(self.num_gestures,self.win_size),padding=0)
+        self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
+
+    def forward(self, x):
+        #shape of x is [B,t,num_pellets]
+        x = x.transpose(-1, -2) #[B, num_pellets, t]
+        #print("before unsqueeze, inp_shape",inp.shape)
+        inp = x.unsqueeze(-2)
+        #print("after unsqueeze, inp_shape",inp.shape)
+        H = self.conv_encoder(inp)
+        #print("after encoder, H_shape", H.shape)
+        H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
+        H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
+        inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
+        return x, inp_hat
+
+    def loadParameters(self, path):
+        self_state = self.state_dict()
+        loaded_state = torch.load(path)
+
+        for name, param in loaded_state.items():
+            origname = name
+            if name not in self_state:
+                name = name.replace("module.", "")
+                if name not in self_state:
+                    print("%s is not in the model."%origname)
+                    continue
+            if self_state[name].size() != loaded_state[origname].size():
+                print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
+                continue
+        
+            self_state[name].copy_(param)
+
 class AE_CSNMF(nn.Module):
     def __init__(self,**args):
         super().__init__()
@@ -43,7 +84,7 @@ class AE_CSNMF(nn.Module):
         #print("after unsqueeze, inp_shape",inp.shape)
         H = self.conv_encoder(inp)
         #print("after encoder, H_shape", H.shape)
-        H = H[:,:,:,:self.t]
+        H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
         return x, inp_hat
