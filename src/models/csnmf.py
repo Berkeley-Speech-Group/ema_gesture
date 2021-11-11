@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 
 #The Vanilla CNMF model is only able to train the huge kinematics signal
 class CNMF(nn.Module):
@@ -38,11 +39,13 @@ class AE_CNMF(nn.Module):
 
     def forward(self, x):
         #shape of x is [B,t,num_pellets]
+        #print("max of x", torch.max(x))
+        #print("min of x", torch.min(x))
         x = x.transpose(-1, -2) #[B, num_pellets, t]
         #print("before unsqueeze, inp_shape",inp.shape)
         inp = x.unsqueeze(-2)
         #print("after unsqueeze, inp_shape",inp.shape)
-        H = F.relu(self.conv_encoder(inp))
+        H = F.relu(self.conv_encoder(inp)) #[B, 1, num_gestures, num_points]
         #print("after encoder, H_shape", H.shape)
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
@@ -83,12 +86,23 @@ class AE_CSNMF(nn.Module):
         #print("before unsqueeze, inp_shape",inp.shape)
         inp = x.unsqueeze(-2)
         #print("after unsqueeze, inp_shape",inp.shape)
-        H = F.relu(self.conv_encoder(inp))
-        #print("after encoder, H_shape", H.shape)
+        H = F.relu(self.conv_encoder(inp)) #[B, 1, num_gestures, num_points]
+        sparsity = self.get_sparsity(H)
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
-        return x, inp_hat
+        return x, inp_hat, sparsity
+
+    def get_sparsity(self, H):
+        #shape of H is [B, 1, num_gestures, num_points]
+        #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
+        H = H.squeeze(1) #[B, num_gestures, num_points]
+        H_l1 = torch.norm(H, p=1, dim=1, keepdim=True) #[B, num_gestures, num_points]
+        H_l2 = torch.norm(H, p=2, dim=1, keepdim=True) #[B, num_gestures, num_points]
+        vector_len = H.shape[1] #num_gestures
+
+        sparsity = (math.sqrt(vector_len) - H_l1/H_l2) / (math.sqrt(vector_len) - 1)
+        return sparsity.mean()
 
     def loadParameters(self, path):
         self_state = self.state_dict()

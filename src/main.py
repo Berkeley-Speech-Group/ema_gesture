@@ -54,6 +54,7 @@ def trainer(model, optimizer, lr_scheduler):
     count = 0
     for e in range(args.num_epochs):
         loss_e = []
+        sparsity_e = []
         for i, ema in enumerate(ema_dataloader):
             #ema.shape #[batch_size,segment_len,num_pellets]
             ema = ema.to(device)
@@ -62,15 +63,18 @@ def trainer(model, optimizer, lr_scheduler):
             model.train()
             optimizer.zero_grad()
             ema = ema.to(device)
-            inp, inp_hat = model(ema)
+            inp, inp_hat, sparsity = model(ema)
             loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss.backward()
             optimizer.step()
-            sys.stdout.write(" loss=%.4f " %(loss.item()))
+            sys.stdout.write(" loss=%.4f, sparsity=%.4f " %(loss.item(), sparsity))
             loss_e.append(loss.item())
+            sparsity_e.append(float(sparsity))
             writer.add_scalar('Loss_train', loss.item(), count)
+            writer.add_scalar('Sparsity_H_train', sparsity, count)
             count += 1
         print("| Avg Loss in Epoch %d is %.4f" %(e, sum(loss_e)/len(loss_e)))
+        print("| Sparsity is %.4f" %(sum(sparsity_e)/len(sparsity_e)))
         lr_scheduler.step()
 
         #save the model every 10 epochs
@@ -94,7 +98,7 @@ if __name__ == "__main__":
 
     ema_dataset = EMA_Dataset(**vars(args))     
     ema_dataloader = torch.utils.data.DataLoader(dataset=ema_dataset, batch_size=args.batch_size, shuffle=True)
-    model = AE_CNMF(**vars(args)).to(device)
+    model = AE_CSNMF(**vars(args)).to(device)
 
     if not os.path.exists(args.model_path):
         print("Model not exist and we just create the new model......")
