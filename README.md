@@ -38,6 +38,7 @@ test_ema_path is a path of one nma input that is used for testing.
 
 
 
+
 ## Train
 
 
@@ -50,6 +51,12 @@ python ./src/main.py --segment_len 500 --win_size 10 --batch_size 16 --num_gestu
 
 ```
 python ./src/main.py --segment_len 500 --win_size 10 --batch_size 16 --num_gestures 100 --model_path save_models/xxx --save_path save_models/xxx --sparse
+```
+
+## Launch Tensorboard
+
+```
+tensorboard --logdir=runs
 ```
 
 ## Test | Visuallize Kinematics
