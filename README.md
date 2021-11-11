@@ -12,6 +12,12 @@ Second, convert the normalized ema kinematics data(nema) to npy.
 python ./src/preprocess/nema2npy.py
 ```
 
+Third, re-normalize the data within [0, 1]. (Non-negative)
+
+```
+python ./src/preprocess/normalize_ema_npy.py
+```
+
 ## Arguments
 
 segment_len is number of ema points that is used during training. It is fixed. If sampling rate is 200Hz, it should be 200 for 1 second utterance. 
