@@ -97,8 +97,8 @@ class AE_CSNMF(nn.Module):
         #shape of H is [B, 1, num_gestures, num_points]
         #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
         H = H.squeeze(1) #[B, num_gestures, num_points]
-        H_l1 = torch.norm(H, p=1, dim=1, keepdim=True) #[B, num_gestures, num_points]
-        H_l2 = torch.norm(H, p=2, dim=1, keepdim=True) #[B, num_gestures, num_points]
+        H_l1 = torch.norm(H, p=1, dim=1) + 1e-5 #[B, num_points]
+        H_l2 = torch.norm(H, p=2, dim=1) + 1e-5 #[B, num_points]
         vector_len = H.shape[1] #num_gestures
 
         sparsity = (math.sqrt(vector_len) - H_l1/H_l2) / (math.sqrt(vector_len) - 1)
