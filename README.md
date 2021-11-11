@@ -2,6 +2,10 @@
 
 A Pytorch Implementation of (Varitional) Auto-Encoder Convolutional Non-Negative Matrix Factorization for Gestural Unit Discovery
 
+## Tracking
+
+https://docs.google.com/presentation/d/10XbOxXiPCrw9Go2Qp_-aBY7Cp7l6JDoCT87a2W8VhpM/edit?usp=sharing
+
 ## Datasets
 
 First, download EMA data from http://tts.speech.cs.cmu.edu/gopalakr/emadata.tgz, untar it. Check .gitignore for the path of "emadata". 
