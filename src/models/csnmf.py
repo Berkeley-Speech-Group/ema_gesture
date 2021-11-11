@@ -42,7 +42,7 @@ class AE_CNMF(nn.Module):
         #print("before unsqueeze, inp_shape",inp.shape)
         inp = x.unsqueeze(-2)
         #print("after unsqueeze, inp_shape",inp.shape)
-        H = self.conv_encoder(inp)
+        H = F.relu(self.conv_encoder(inp))
         #print("after encoder, H_shape", H.shape)
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
@@ -83,7 +83,7 @@ class AE_CSNMF(nn.Module):
         #print("before unsqueeze, inp_shape",inp.shape)
         inp = x.unsqueeze(-2)
         #print("after unsqueeze, inp_shape",inp.shape)
-        H = self.conv_encoder(inp)
+        H = F.relu(self.conv_encoder(inp))
         #print("after encoder, H_shape", H.shape)
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
