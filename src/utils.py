@@ -3,6 +3,8 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.pyplot import figure
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
 import os
 
@@ -13,7 +15,17 @@ def vis_H(model, **args):
     ema_ori, ema_hat, latent_H, _ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     #print(latent_H.shape) #[1,1,num_gestures, t]
     latent_H = latent_H.squeeze().squeeze().detach().numpy()
-    ax = sns.heatmap(latent_H, linewidth=0.5)
+    #print(latent_H)
+    #ax = sns.heatmap(latent_H, linewidth=0.5)
+    fig = plt.figure(figsize=(10, 10))
+    ax = plt.gca()
+    latent_H = latent_H[:,:400]
+    im = ax.imshow(latent_H, cmap='hot', interpolation='nearest')
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
     plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"))
     plt.clf()
 
