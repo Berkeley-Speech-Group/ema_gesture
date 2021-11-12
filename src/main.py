@@ -36,7 +36,11 @@ parser.add_argument('--num_workers', type=int, default=4, help='num_workers')
 parser.add_argument('--lr_decay_rate',type=float, default=0.8, help='lr_decay_rate')
 parser.add_argument('--vis_kinematics', action='store_true', help='')
 parser.add_argument('--vis_gestures', action='store_true', help='')
-parser.add_argument('--sparse', action='store_true', help='')
+parser.add_argument('--sparse_c', action='store_true', help='')
+parser.add_argument('--sparse_t', action='store_true', help='')
+parser.add_argument('--rec_factor',type=float, default=1, help='')
+parser.add_argument('--sparse_c_factor',type=float, default=1, help='')
+parser.add_argument('--sparse_t_factor',type=float, default=1, help='')
 
 args = parser.parse_args()
 
@@ -47,7 +51,7 @@ def eval_model(model, ema_dataloader_test):
     print("###################################################")
     print("###########Start EValuating########################")
     print("###################################################")
-    loss_e = []
+    rec_loss_e = []
     sparsity_c_e = []
     sparsity_t_e = []
     for i, ema in enumerate(ema_dataloader_test):
@@ -56,71 +60,78 @@ def eval_model(model, ema_dataloader_test):
         model.eval()
         optimizer.zero_grad()
         inp, inp_hat, _, sparsity_c, sparsity_t = model(ema)
-        loss = F.l1_loss(inp, inp_hat, reduction='mean')
-        loss_e.append(loss.item())
+        rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
+        rec_loss_e.append(rec_loss.item())
         sparsity_c_e.append(float(sparsity_c))  
         sparsity_t_e.append(float(sparsity_t))  
-    print("| Avg Loss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(loss_e)/len(loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
+    print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
 
-def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test):
+def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
 
-    ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True)
-    ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False)
+    ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args['batch_size'], shuffle=True)
+    ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args['batch_size'], shuffle=False)
 
     #Write into logs
-    if not os.path.exists(args.save_path):
-        os.makedirs(args.save_path)
-    log_path = os.path.join(args.save_path, "logs.txt")
+    if not os.path.exists(args['save_path']):
+        os.makedirs(args['save_path'])
+    log_path = os.path.join(args['save_path'], "logs.txt")
     f = open(log_path, 'w')
     os.chmod(log_path, 755)
-    f.write(args.save_path + '\n')
+    f.write(args['save_path'] + '\n')
     f.write("Process is " + str(os.getppid()))
 
     writer = SummaryWriter()
     count = 0
-    for e in range(args.num_epochs):
-        loss_e = []
+    for e in range(args['num_epochs']):
+        rec_loss_e = []
         sparsity_c_e = []
         sparsity_t_e = []
         for i, ema in enumerate(ema_dataloader_train):
             #ema.shape #[batch_size,segment_len,num_pellets]
             ema = ema.to(device)
             training_size = len(ema_dataset_train)
-            sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args.batch_size))
+            sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             model.train()
             optimizer.zero_grad()
             inp, inp_hat, _,sparsity_c, sparsity_t = model(ema)
-            loss = F.l1_loss(inp, inp_hat, reduction='mean')
+            rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
+            loss = args['rec_factor']*rec_loss
+
+            if args['sparse_c']:
+                loss += -args['sparse_c_factor']*sparsity_c
+            if args['sparse_t']:
+                loss += -args['sparse_t_factor']*sparsity_t
+
             loss.backward()
             optimizer.step()
-            model.conv_decoder.apply(clipper)
-            sys.stdout.write(" loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f " %(loss.item(), sparsity_c, sparsity_t))
-            loss_e.append(loss.item())
+            #model.conv_decoder.apply(clipper)
+            sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t))
+            rec_loss_e.append(rec_loss.item())
             sparsity_c_e.append(float(sparsity_c))
             sparsity_t_e.append(float(sparsity_t))
-            writer.add_scalar('Loss_train', loss.item(), count)
+            writer.add_scalar('Rec_Loss_train', rec_loss.item(), count)
             writer.add_scalar('Sparsity_H_c_train', sparsity_c, count)
             writer.add_scalar('Sparsity_H_t_train', sparsity_t, count)
             count += 1
-        print("|Epoch: %d Avg Loss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(loss_e)/len(loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
+        print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
         
-        if (e+1) % args.step_size == 0:
+        if (e+1) % args['step_size'] == 0:
             lr_scheduler.step()
-        if (e+1) % args.eval_epoch == 0:
+        if (e+1) % args['eval_epoch'] == 0:
             ####start evaluation
             eval_model(model, ema_dataloader_test)
 
         #save the model every 10 epochs
         if (e + 1) % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args.save_path, "best"+str(e)+".pth"))
+            torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
 
         #write into log after each epoch
         f.write("***************************************************************************")
         f.write("epoch: %d \n" %(e))
-        f.write("Ave loss is %.4f\n" %(sum(loss_e)/len(loss_e)))
+        f.write("Ave loss is %.4f\n" %(sum(rec_loss_e)/len(rec_loss_e)))
         f.write("Sparsity_c is %.4f\n"%(sum(sparsity_c_e)/len(sparsity_c_e)))
         f.write("Sparsity_t is %.4f\n"%(sum(sparsity_t_e)/len(sparsity_t_e)))
-        f.write("batch_size is {} \n".format(args.batch_size))
+        f.write("batch_size is {} \n".format(args['batch_size']))
         f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
 
         
@@ -166,6 +177,6 @@ if __name__ == "__main__":
     #if there is no eval task, start training:
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=args.step_size, gamma=args.lr_decay_rate)
-    trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test)
+    trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
 
 
