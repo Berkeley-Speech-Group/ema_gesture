@@ -19,7 +19,7 @@ def vis_H(model, **args):
     #ax = sns.heatmap(latent_H, linewidth=0.5)
     fig = plt.figure(figsize=(10, 10))
     ax = plt.gca()
-    latent_H = latent_H[:,:400]
+    latent_H = latent_H[:,:100]
     im = ax.imshow(latent_H, cmap='hot', interpolation='nearest')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)

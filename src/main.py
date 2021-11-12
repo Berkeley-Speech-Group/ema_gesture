@@ -48,17 +48,19 @@ def eval_model(model, ema_dataloader_test):
     print("###########Start EValuating########################")
     print("###################################################")
     loss_e = []
-    sparsity_e = []
+    sparsity_c_e = []
+    sparsity_t_e = []
     for i, ema in enumerate(ema_dataloader_test):
         #ema.shape #[batch_size,segment_len,num_pellets]
         ema = ema.to(device)
         model.eval()
         optimizer.zero_grad()
-        inp, inp_hat, _, sparsity = model(ema)
+        inp, inp_hat, _, sparsity_c, sparsity_t = model(ema)
         loss = F.l1_loss(inp, inp_hat, reduction='mean')
         loss_e.append(loss.item())
-        sparsity_e.append(float(sparsity))  
-    print("| Avg Loss is %.4f, Sparsity is %.4f" %(sum(loss_e)/len(loss_e), sum(sparsity_e)/len(sparsity_e)))
+        sparsity_c_e.append(float(sparsity_c))  
+        sparsity_t_e.append(float(sparsity_t))  
+    print("| Avg Loss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(loss_e)/len(loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
 
 def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test):
 
@@ -78,7 +80,8 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
     count = 0
     for e in range(args.num_epochs):
         loss_e = []
-        sparsity_e = []
+        sparsity_c_e = []
+        sparsity_t_e = []
         for i, ema in enumerate(ema_dataloader_train):
             #ema.shape #[batch_size,segment_len,num_pellets]
             ema = ema.to(device)
@@ -86,18 +89,20 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args.batch_size))
             model.train()
             optimizer.zero_grad()
-            inp, inp_hat, _,sparsity = model(ema)
+            inp, inp_hat, _,sparsity_c, sparsity_t = model(ema)
             loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss.backward()
             optimizer.step()
-            #model.conv_decoder.apply(clipper)
-            sys.stdout.write(" loss=%.4f, sparsity=%.4f " %(loss.item(), sparsity))
+            model.conv_decoder.apply(clipper)
+            sys.stdout.write(" loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f " %(loss.item(), sparsity_c, sparsity_t))
             loss_e.append(loss.item())
-            sparsity_e.append(float(sparsity))
+            sparsity_c_e.append(float(sparsity_c))
+            sparsity_t_e.append(float(sparsity_t))
             writer.add_scalar('Loss_train', loss.item(), count)
-            writer.add_scalar('Sparsity_H_train', sparsity, count)
+            writer.add_scalar('Sparsity_H_c_train', sparsity_c, count)
+            writer.add_scalar('Sparsity_H_t_train', sparsity_t, count)
             count += 1
-        print("|Epoch: %d Avg Loss is %.4f, Sparsity is %.4f" %(e, sum(loss_e)/len(loss_e), sum(sparsity_e)/len(sparsity_e)))
+        print("|Epoch: %d Avg Loss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(loss_e)/len(loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
         
         if (e+1) % args.step_size == 0:
             lr_scheduler.step()
@@ -113,6 +118,8 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
         f.write("***************************************************************************")
         f.write("epoch: %d \n" %(e))
         f.write("Ave loss is %.4f\n" %(sum(loss_e)/len(loss_e)))
+        f.write("Sparsity_c is %.4f\n"%(sum(sparsity_c_e)/len(sparsity_c_e)))
+        f.write("Sparsity_t is %.4f\n"%(sum(sparsity_t_e)/len(sparsity_t_e)))
         f.write("batch_size is {} \n".format(args.batch_size))
         f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
 
