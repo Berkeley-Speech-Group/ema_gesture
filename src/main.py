@@ -56,8 +56,7 @@ def eval_model(model, ema_dataloader_test):
         loss = F.l1_loss(inp, inp_hat, reduction='mean')
         loss_e.append(loss.item())
         sparsity_e.append(float(sparsity))  
-    print("| Avg Loss is %.4f" %(sum(loss_e)/len(loss_e)))
-    print("| Sparsity is %.4f" %(sum(sparsity_e)/len(sparsity_e)))  
+    print("| Avg Loss is %.4f, Sparsity is %.4f" %(sum(loss_e)/len(loss_e), sum(sparsity_e)/len(sparsity_e)))
 
 def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test):
 
@@ -95,8 +94,8 @@ def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test)
             writer.add_scalar('Loss_train', loss.item(), count)
             writer.add_scalar('Sparsity_H_train', sparsity, count)
             count += 1
-        print("| Avg Loss in Epoch %d is %.4f" %(e, sum(loss_e)/len(loss_e)))
-        print("| Sparsity is %.4f" %(sum(sparsity_e)/len(sparsity_e)))
+        print("|Epoch: %d Avg Loss is %.4f, Sparsity is %.4f" %(e, sum(loss_e)/len(loss_e), sum(sparsity_e)/len(sparsity_e)))
+        
         if (e+1) % args.step_size == 0:
             lr_scheduler.step()
         if (e+1) % args.eval_epoch == 0:
