@@ -18,15 +18,18 @@ def loadWAV(filename, max_points=32000):
 
 class EMA_Dataset:
     
-    def __init__(self, path='emadata', **args):
+    def __init__(self, path='emadata', mode='train', **args):
         
-        #record paths for wav file and nema file
+        ####record paths for wav file and nema file
+        ####train/test = 80%/20%
+
         self.segment_len = args['segment_len']
         self.wav_paths = []
         self.ema_paths = []
         self.ema_npy_paths = []
         self.eval = args['vis_kinematics'] or args['vis_gestures']
         self.spk_id_setting = args['spk_id']
+        self.mode = mode
         
         for spk_id in os.listdir(path):
             if not spk_id.startswith('cin'):
@@ -54,7 +57,15 @@ class EMA_Dataset:
         #print(len(self.ema_npy_paths)) #4409
         #print(len(self.ema_paths)) #4409
         #print(len(self.wav_paths)) #4579
-               
+
+        random.shuffle(self.ema_npy_paths)
+        train_size = int(0.8 * len(self.ema_npy_paths))
+        
+        if self.mode == 'train':
+            self.ema_npy_paths = self.ema_npy_paths[:train_size]
+        else:
+            self.ema_npy_paths = self.ema_npy_paths[train_size:]
+        
     def __len__(self): #4579
         return len(self.ema_npy_paths)
     def __getitem__(self, index):
@@ -77,7 +88,6 @@ class EMA_Dataset:
                 ema_data = ema_data[start_point:start_point+self.segment_len]
             else:
                 ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
-        
         return ema_data
 
 

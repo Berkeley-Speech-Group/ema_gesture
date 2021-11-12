@@ -30,6 +30,7 @@ parser.add_argument('--save_path', type=str, default='save_models/test', help=''
 parser.add_argument('--test_ema_path', type=str, default='', help='')
 parser.add_argument('--spk_id', type=str, default='all', help='')
 parser.add_argument('--step_size', type=int, default=2, help='step_size')
+parser.add_argument('--eval_epoch', type=int, default=5, help='eval_epoch')
 parser.add_argument('--num_workers', type=int, default=4, help='num_workers')
 parser.add_argument('--lr_decay_rate',type=float, default=0.8, help='lr_decay_rate')
 parser.add_argument('--vis_kinematics', action='store_true', help='')
@@ -40,7 +41,28 @@ args = parser.parse_args()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
-def trainer(model, optimizer, lr_scheduler):
+def eval_model(model, ema_dataloader_test):
+    print("###################################################")
+    print("###########Start EValuating########################")
+    print("###################################################")
+    loss_e = []
+    sparsity_e = []
+    for i, ema in enumerate(ema_dataloader_test):
+        #ema.shape #[batch_size,segment_len,num_pellets]
+        ema = ema.to(device)
+        model.eval()
+        optimizer.zero_grad()
+        inp, inp_hat, sparsity = model(ema)
+        loss = F.l1_loss(inp, inp_hat, reduction='mean')
+        loss_e.append(loss.item())
+        sparsity_e.append(float(sparsity))  
+    print("| Avg Loss is %.4f" %(sum(loss_e)/len(loss_e)))
+    print("| Sparsity is %.4f" %(sum(sparsity_e)/len(sparsity_e)))  
+
+def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test):
+
+    ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True)
+    ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False)
 
     #Write into logs
     if not os.path.exists(args.save_path):
@@ -56,14 +78,13 @@ def trainer(model, optimizer, lr_scheduler):
     for e in range(args.num_epochs):
         loss_e = []
         sparsity_e = []
-        for i, ema in enumerate(ema_dataloader):
+        for i, ema in enumerate(ema_dataloader_train):
             #ema.shape #[batch_size,segment_len,num_pellets]
             ema = ema.to(device)
-            training_size = len(ema_dataset)
+            training_size = len(ema_dataset_train)
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args.batch_size))
             model.train()
             optimizer.zero_grad()
-            ema = ema.to(device)
             inp, inp_hat, sparsity = model(ema)
             loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss.backward()
@@ -78,6 +99,9 @@ def trainer(model, optimizer, lr_scheduler):
         print("| Sparsity is %.4f" %(sum(sparsity_e)/len(sparsity_e)))
         if (e+1) % args.step_size == 0:
             lr_scheduler.step()
+        if (e+1) % args.eval_epoch == 0:
+            ####start evaluation
+            eval_model(model, ema_dataloader_test)
 
         #save the model every 10 epochs
         if (e + 1) % 10 == 0:
@@ -97,8 +121,8 @@ if __name__ == "__main__":
     np.random.seed(12)
     random.seed(12)
 
-    ema_dataset = EMA_Dataset(**vars(args))     
-    ema_dataloader = torch.utils.data.DataLoader(dataset=ema_dataset, batch_size=args.batch_size, shuffle=True)
+    ema_dataset_train = EMA_Dataset(mode='train', **vars(args))     
+    ema_dataset_test = EMA_Dataset(mode='test', **vars(args))     
     model = AE_CSNMF(**vars(args)).to(device)
 
     if not os.path.exists(args.model_path):
@@ -131,6 +155,6 @@ if __name__ == "__main__":
     #if there is no eval task, start training:
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=args.step_size, gamma=args.lr_decay_rate)
-    trainer(model, optimizer, lr_scheduler)
+    trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test)
 
 
