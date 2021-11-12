@@ -39,8 +39,8 @@ parser.add_argument('--vis_gestures', action='store_true', help='')
 parser.add_argument('--sparse_c', action='store_true', help='')
 parser.add_argument('--sparse_t', action='store_true', help='')
 parser.add_argument('--rec_factor',type=float, default=1, help='')
-parser.add_argument('--sparse_c_factor',type=float, default=1, help='')
-parser.add_argument('--sparse_t_factor',type=float, default=1, help='')
+parser.add_argument('--sparse_c_factor',type=float, default=0.01, help='')
+parser.add_argument('--sparse_t_factor',type=float, default=0.01, help='')
 
 args = parser.parse_args()
 
@@ -64,7 +64,7 @@ def eval_model(model, ema_dataloader_test):
         rec_loss_e.append(rec_loss.item())
         sparsity_c_e.append(float(sparsity_c))  
         sparsity_t_e.append(float(sparsity_t))  
-    print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
+    print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
 
 def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
 

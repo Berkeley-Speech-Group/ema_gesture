@@ -12,7 +12,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
 def vis_H(model, **args):
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    ema_ori, ema_hat, latent_H, _ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ema_ori, ema_hat, latent_H, _, _ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     #print(latent_H.shape) #[1,1,num_gestures, t]
     latent_H = latent_H.squeeze().squeeze().detach().numpy()
     #print(latent_H)
@@ -40,7 +40,7 @@ def vis_kinematics(model, **args):
     ######################################
     ############Reconstruction
     #####################################
-    ema_ori, ema_hat,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ema_ori, ema_hat,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
     draw_kinematics(ema_data_hat, mode=ema_id+'_rec', **args) 
     
@@ -83,6 +83,6 @@ def draw_kinematics(ema_data, mode, **args):
 
 def vis_gestures(model, **args):
     gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
-    gesture_index = 35
+    gesture_index = 2
     draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), mode='gesture', **args)
     
