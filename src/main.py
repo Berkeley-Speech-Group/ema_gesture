@@ -39,8 +39,8 @@ parser.add_argument('--vis_gestures', action='store_true', help='')
 parser.add_argument('--sparse_c', action='store_true', help='')
 parser.add_argument('--sparse_t', action='store_true', help='')
 parser.add_argument('--rec_factor',type=float, default=1, help='')
-parser.add_argument('--sparse_c_factor',type=float, default=0.01, help='')
-parser.add_argument('--sparse_t_factor',type=float, default=0.01, help='')
+parser.add_argument('--sparse_c_factor',type=float, default=1e-3, help='')
+parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
 
 args = parser.parse_args()
 
