@@ -105,10 +105,11 @@ class AE_CSNMF(nn.Module):
         H = F.relu(self.conv_encoder(inp)) #[B, 1, num_gestures, num_points]
         sparsity = self.get_sparsity(H)
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
+        latent_H = H
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
         
-        return x, inp_hat, sparsity
+        return x, inp_hat, latent_H, sparsity
 
     def get_sparsity(self, H):
         #shape of H is [B, 1, num_gestures, num_points]

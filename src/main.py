@@ -11,7 +11,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dataloader import EMA_Dataset
 from models.csnmf import CNMF,AE_CSNMF, AE_CNMF, NegativeClipper
-from utils import vis_gestures, vis_kinematics
+from utils import vis_gestures, vis_kinematics, vis_H
+import seaborn as sns
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -53,7 +54,7 @@ def eval_model(model, ema_dataloader_test):
         ema = ema.to(device)
         model.eval()
         optimizer.zero_grad()
-        inp, inp_hat, sparsity = model(ema)
+        inp, inp_hat, _, sparsity = model(ema)
         loss = F.l1_loss(inp, inp_hat, reduction='mean')
         loss_e.append(loss.item())
         sparsity_e.append(float(sparsity))  
@@ -85,7 +86,7 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args.batch_size))
             model.train()
             optimizer.zero_grad()
-            inp, inp_hat, sparsity = model(ema)
+            inp, inp_hat, _,sparsity = model(ema)
             loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss.backward()
             optimizer.step()
@@ -151,6 +152,7 @@ if __name__ == "__main__":
         vis_kinematics(model, **vars(args))
         exit()
     if args.vis_gestures:
+        vis_H(model, **vars(args))
         vis_gestures(model, **vars(args))
         exit()
 
