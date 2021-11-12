@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 from dataloader import EMA_Dataset
-from models.csnmf import CNMF,AE_CSNMF, AE_CNMF
+from models.csnmf import CNMF,AE_CSNMF, AE_CNMF, NegativeClipper
 from utils import vis_gestures, vis_kinematics
 
 import warnings
@@ -41,6 +41,7 @@ args = parser.parse_args()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
+
 def eval_model(model, ema_dataloader_test):
     print("###################################################")
     print("###########Start EValuating########################")
@@ -58,7 +59,7 @@ def eval_model(model, ema_dataloader_test):
         sparsity_e.append(float(sparsity))  
     print("| Avg Loss is %.4f, Sparsity is %.4f" %(sum(loss_e)/len(loss_e), sum(sparsity_e)/len(sparsity_e)))
 
-def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test):
+def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test):
 
     ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True)
     ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False)
@@ -88,6 +89,7 @@ def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test)
             loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss.backward()
             optimizer.step()
+            #model.conv_decoder.apply(clipper)
             sys.stdout.write(" loss=%.4f, sparsity=%.4f " %(loss.item(), sparsity))
             loss_e.append(loss.item())
             sparsity_e.append(float(sparsity))
@@ -123,6 +125,7 @@ if __name__ == "__main__":
     ema_dataset_train = EMA_Dataset(mode='train', **vars(args))     
     ema_dataset_test = EMA_Dataset(mode='test', **vars(args))     
     model = AE_CSNMF(**vars(args)).to(device)
+    clipper = NegativeClipper()
 
     if not os.path.exists(args.model_path):
         print("Model not exist and we just create the new model......")
@@ -154,6 +157,6 @@ if __name__ == "__main__":
     #if there is no eval task, start training:
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=args.step_size, gamma=args.lr_decay_rate)
-    trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test)
+    trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test)
 
 

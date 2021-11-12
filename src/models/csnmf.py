@@ -3,6 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
+class NegativeClipper(object):
+
+    def __init__(self, frequency=5):
+        self.frequency = frequency
+
+    def __call__(self, module):
+        # filter the variables to get the ones you want
+        if hasattr(module, 'weight'):
+            w = module.weight.data
+            w = w.clamp(0, torch.max(w))
+            module.weight.data = w
+
 #The Vanilla CNMF model is only able to train the huge kinematics signal
 class CNMF(nn.Module):
     def __init__(self, **args):
@@ -79,8 +91,11 @@ class AE_CSNMF(nn.Module):
         self.num_gestures = args['num_gestures']
         self.conv_encoder = nn.ConvTranspose2d(in_channels=self.num_pellets,out_channels=1,kernel_size=(self.num_gestures,self.win_size),padding=0)
         self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
-        #self.conv_encoder.weight.data = torch.sqrt(torch.square(self.conv_encoder.weight.data))
-        #self.conv_decoder.weight.data = torch.sqrt(torch.square(self.conv_decoder.weight.data))
+        #nn.init.xavier_uniform(self.conv_encoder.weight)
+        #nn.init.xavier_uniform(self.conv_decoder.weight)
+        #self.conv_encoder.weight.data = F.relu(self.conv_encoder.weight.data)
+        #self.conv_decoder.weight.data = F.relu(self.conv_decoder.weight.data)
+
     def forward(self, x):
         #shape of x is [B,t,num_pellets]
         x = x.transpose(-1, -2) #[B, num_pellets, t]
@@ -92,6 +107,7 @@ class AE_CSNMF(nn.Module):
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
+        
         return x, inp_hat, sparsity
 
     def get_sparsity(self, H):

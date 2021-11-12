@@ -65,7 +65,12 @@ class EMA_Dataset:
             self.ema_npy_paths = self.ema_npy_paths[:train_size]
         else:
             self.ema_npy_paths = self.ema_npy_paths[train_size:]
-        
+        print(self.mode + "_ size is: ", len(self.ema_npy_paths))
+
+        with open("emadata/"+self.mode+"_metalist.txt", 'w') as f:
+            for ema_npy_path in self.ema_npy_paths:
+                f.write(ema_npy_path+'\n')
+
     def __len__(self): #4579
         return len(self.ema_npy_paths)
     def __getitem__(self, index):
@@ -90,10 +95,5 @@ class EMA_Dataset:
                 ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
         return ema_data
 
-
-if __name__ == "__main__":
-    dataset = EMA_Dataset()
-    dataset[0] #wav is [1, 63490], ema is [724, 12] , sr for ema is 182.45
-    dataset[1] #wav is [1, 55494], ema is [802, 12] , sr for ema is 231.23
     
 

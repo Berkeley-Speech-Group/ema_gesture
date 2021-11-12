@@ -18,7 +18,7 @@ def vis_kinematics(model, **args):
     ######################################
     ############Reconstruction
     #####################################
-    ema_ori, ema_hat = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ema_ori, ema_hat,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
     draw_kinematics(ema_data_hat, mode=ema_id+'_rec', **args) 
     
