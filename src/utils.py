@@ -61,6 +61,6 @@ def draw_kinematics(ema_data, mode, **args):
 
 def vis_gestures(model, **args):
     gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
-    gesture_index = 70
+    gesture_index = 35
     draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), mode='gesture', **args)
     

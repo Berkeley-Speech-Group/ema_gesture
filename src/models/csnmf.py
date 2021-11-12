@@ -79,7 +79,8 @@ class AE_CSNMF(nn.Module):
         self.num_gestures = args['num_gestures']
         self.conv_encoder = nn.ConvTranspose2d(in_channels=self.num_pellets,out_channels=1,kernel_size=(self.num_gestures,self.win_size),padding=0)
         self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
-
+        self.conv_encoder.weight.data = F.relu(self.conv_encoder.weight.data)
+        self.conv_decoder.weight.data = F.relu(self.conv_decoder.weight.data)
     def forward(self, x):
         #shape of x is [B,t,num_pellets]
         x = x.transpose(-1, -2) #[B, num_pellets, t]
@@ -97,8 +98,8 @@ class AE_CSNMF(nn.Module):
         #shape of H is [B, 1, num_gestures, num_points]
         #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
         H = H.squeeze(1) #[B, num_gestures, num_points]
-        H_l1 = torch.norm(H, p=1, dim=1) + 1e-5 #[B, num_points]
-        H_l2 = torch.norm(H, p=2, dim=1) + 1e-5 #[B, num_points]
+        H_l1 = torch.norm(H, p=1, dim=1) + 1e-6 #[B, num_points]
+        H_l2 = torch.norm(H, p=2, dim=1) + 1e-6 #[B, num_points], plus 1e-6 because H_l2 could be 0 for some vectors
         vector_len = H.shape[1] #num_gestures
 
         sparsity = (math.sqrt(vector_len) - H_l1/H_l2) / (math.sqrt(vector_len) - 1)

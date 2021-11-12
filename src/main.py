@@ -28,7 +28,7 @@ parser.add_argument('--weight_decay', type=float, default=5e-5, help='')
 parser.add_argument('--model_path', type=str, default='', help='')
 parser.add_argument('--save_path', type=str, default='save_models/test', help='')
 parser.add_argument('--test_ema_path', type=str, default='', help='')
-parser.add_argument('--step_size', type=int, default=5, help='step_size')
+parser.add_argument('--step_size', type=int, default=2, help='step_size')
 parser.add_argument('--num_workers', type=int, default=4, help='num_workers')
 parser.add_argument('--lr_decay_rate',type=float, default=0.8, help='lr_decay_rate')
 parser.add_argument('--vis_kinematics', action='store_true', help='')
@@ -75,7 +75,8 @@ def trainer(model, optimizer, lr_scheduler):
             count += 1
         print("| Avg Loss in Epoch %d is %.4f" %(e, sum(loss_e)/len(loss_e)))
         print("| Sparsity is %.4f" %(sum(sparsity_e)/len(sparsity_e)))
-        lr_scheduler.step()
+        if (e+1) % args.step_size == 0:
+            lr_scheduler.step()
 
         #save the model every 10 epochs
         if (e + 1) % 10 == 0:
@@ -89,7 +90,6 @@ def trainer(model, optimizer, lr_scheduler):
         f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
 
         
-
 if __name__ == "__main__":
     torch.manual_seed(12)
     torch.cuda.manual_seed(12)
