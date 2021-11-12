@@ -79,8 +79,8 @@ class AE_CSNMF(nn.Module):
         self.num_gestures = args['num_gestures']
         self.conv_encoder = nn.ConvTranspose2d(in_channels=self.num_pellets,out_channels=1,kernel_size=(self.num_gestures,self.win_size),padding=0)
         self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
-        self.conv_encoder.weight.data = F.relu(self.conv_encoder.weight.data)
-        self.conv_decoder.weight.data = F.relu(self.conv_decoder.weight.data)
+        #self.conv_encoder.weight.data = torch.sqrt(torch.square(self.conv_encoder.weight.data))
+        #self.conv_decoder.weight.data = torch.sqrt(torch.square(self.conv_decoder.weight.data))
     def forward(self, x):
         #shape of x is [B,t,num_pellets]
         x = x.transpose(-1, -2) #[B, num_pellets, t]

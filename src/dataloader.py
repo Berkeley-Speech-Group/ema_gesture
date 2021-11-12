@@ -26,10 +26,14 @@ class EMA_Dataset:
         self.ema_paths = []
         self.ema_npy_paths = []
         self.eval = args['vis_kinematics'] or args['vis_gestures']
+        self.spk_id_setting = args['spk_id']
         
         for spk_id in os.listdir(path):
             if not spk_id.startswith('cin'):
                 continue
+            if not self.spk_id_setting == 'all':
+                if not self.spk_id_setting in spk_id:
+                    continue
             spk_id_path = os.path.join(path, spk_id)
             ema_dir = os.path.join(spk_id_path, "nema")
             wav_dir = os.path.join(spk_id_path, "wav")
