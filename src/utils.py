@@ -35,34 +35,33 @@ def vis_kinematics(model, **args):
     #####################################
     ema_data = np.load(args['test_ema_path']) #[t, 12]
     ema_id = args['test_ema_path'].split("/")[-1][:-4]
-    draw_kinematics(ema_data, mode=ema_id+'_ori', **args)
+    #draw_kinematics(ema_data, mode=ema_id+'_ori', **args)
 
     ######################################
     ############Reconstruction
     #####################################
     ema_ori, ema_hat,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
-    draw_kinematics(ema_data_hat, mode=ema_id+'_rec', **args) 
+
+    draw_kinematics(ema_data, ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
 
-def draw_kinematics(ema_data, mode, **args):
-    
+def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
     
     x = np.arange(ema_data.shape[0])
-
     fig = plt.figure(figsize=(10, 8))
-    fig.suptitle(mode)
+    fig.suptitle(title)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
-
     outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
     for i in range(6):
         inner = gridspec.GridSpecFromSubplotSpec(2, 1,
                         subplot_spec=outer[i], wspace=0.1, hspace=0.1)
-
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
-            ax.plot(x, ema_data[:,i*2+j],c=colors[i])
+            ax.plot(x, ema_data[:,i*2+j],c=colors[i], linestyle='dashed', label='ori')
+            if mode == 'kinematics':
+                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec')
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
@@ -77,12 +76,11 @@ def draw_kinematics(ema_data, mode, **args):
             else:
                 ax.set_ylabel(labels[i]+' y',rotation=0)
             ax.yaxis.set_label_coords(-0.05,0.5)
-
-    plt.savefig(os.path.join(args['save_path'], mode+"_"+".png"))
+    plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
     plt.clf()
 
 def vis_gestures(model, **args):
     gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
     gesture_index = 2
-    draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), mode='gesture', **args)
+    draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
     

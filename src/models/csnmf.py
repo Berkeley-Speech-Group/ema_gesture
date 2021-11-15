@@ -119,10 +119,11 @@ class AE_CSNMF(nn.Module):
         H_l2_c = torch.norm(H, p=2, dim=1) + 1e-6 #[B, num_points], plus 1e-6 because H_l2 could be 0 for some vectors
         H_l1_t = torch.norm(H, p=1, dim=2) + 1e-6 #[B, num_gestures]
         H_l2_t = torch.norm(H, p=2, dim=2) + 1e-6 #[B, num_gestures], plus 1e-6 because H_l2 could be 0 for some vectors
-        vector_len = H.shape[1] #num_gestures
+        vector_len_c = H.shape[1] #num_gestures
+        vector_len_t = H.shape[2] #num_points
 
-        sparsity_c = (math.sqrt(vector_len) - H_l1_c/H_l2_c) / (math.sqrt(vector_len) - 1)
-        sparsity_t = (math.sqrt(vector_len) - H_l1_t/H_l2_t) / (math.sqrt(vector_len) - 1)
+        sparsity_c = (math.sqrt(vector_len_c) - H_l1_c/H_l2_c) / (math.sqrt(vector_len_c) - 1)
+        sparsity_t = (math.sqrt(vector_len_t) - H_l1_t/H_l2_t) / (math.sqrt(vector_len_t) - 1)
         return sparsity_c.mean(), sparsity_t.mean()
 
     def loadParameters(self, path):
