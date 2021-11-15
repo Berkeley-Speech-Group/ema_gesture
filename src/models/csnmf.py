@@ -129,7 +129,6 @@ class AE_CSNMF(nn.Module):
     def loadParameters(self, path):
         self_state = self.state_dict()
         loaded_state = torch.load(path)
-
         for name, param in loaded_state.items():
             origname = name
             if name not in self_state:
@@ -140,5 +139,4 @@ class AE_CSNMF(nn.Module):
             if self_state[name].size() != loaded_state[origname].size():
                 print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
                 continue
-        
             self_state[name].copy_(param)

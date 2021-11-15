@@ -41,6 +41,8 @@ parser.add_argument('--sparse_t', action='store_true', help='')
 parser.add_argument('--rec_factor',type=float, default=1, help='')
 parser.add_argument('--sparse_c_factor',type=float, default=1e-3, help='')
 parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
+parser.add_argument('--sparse_c_base',type=float, default=0.65, help='')
+parser.add_argument('--sparse_t_base',type=float, default=0.65, help='')
 
 args = parser.parse_args()
 
@@ -99,10 +101,10 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
 
             if args['sparse_c']:
                 #loss += -args['sparse_c_factor']*sparsity_c
-                loss += args['sparse_c_factor']*(sparsity_c-0.7)**2
+                loss += args['sparse_c_factor']*(sparsity_c-args['sparse_c_base'])**2
             if args['sparse_t']:
                 #loss += -args['sparse_t_factor']*sparsity_t
-                loss += args['sparse_t_factor']*(sparsity_t-0.7)**2
+                loss += args['sparse_t_factor']*(sparsity_t-args['sparse_t_base'])**2
 
             loss.backward()
             optimizer.step()
@@ -173,7 +175,7 @@ if __name__ == "__main__":
         exit()
     if args.vis_gestures:
         vis_H(model, **vars(args))
-        vis_gestures(model, **vars(args))
+        #vis_gestures(model, **vars(args))
         exit()
 
     #if there is no eval task, start training:
