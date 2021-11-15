@@ -4,7 +4,11 @@ A Pytorch Implementation of (Varitional) Auto-Encoder Convolutional Non-Negative
 
 ## Tracking
 
+### Slides
+
 https://docs.google.com/presentation/d/10XbOxXiPCrw9Go2Qp_-aBY7Cp7l6JDoCT87a2W8VhpM/edit?usp=sharing
+
+### Doc
 
 https://docs.google.com/document/d/10n9Oaaqu7THBYDambokOtfEDqT-cnQs_uYpKxhSUh_Q/edit?usp=sharing
 
