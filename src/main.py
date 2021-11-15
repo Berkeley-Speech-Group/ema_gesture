@@ -98,9 +98,11 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             loss = args['rec_factor']*rec_loss
 
             if args['sparse_c']:
-                loss += -args['sparse_c_factor']*sparsity_c
+                #loss += -args['sparse_c_factor']*sparsity_c
+                loss += args['sparse_c_factor']*(sparsity_c-0.7)**2
             if args['sparse_t']:
-                loss += -args['sparse_t_factor']*sparsity_t
+                #loss += -args['sparse_t_factor']*sparsity_t
+                loss += args['sparse_t_factor']*(sparsity_t-0.7)**2
 
             loss.backward()
             optimizer.step()
