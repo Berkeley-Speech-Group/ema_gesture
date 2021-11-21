@@ -108,7 +108,6 @@ class AE_CSNMF(nn.Module):
         latent_H = H ##[1,1,num_gestures, t]
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
-        
         return x, inp_hat, latent_H, sparsity_c, sparsity_t
 
     def get_sparsity(self, H):

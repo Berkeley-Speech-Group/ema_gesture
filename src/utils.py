@@ -19,7 +19,9 @@ def vis_H(model, **args):
     #ax = sns.heatmap(latent_H, linewidth=0.5)
     fig = plt.figure(figsize=(10, 10))
     ax = plt.gca()
-    latent_H = latent_H[:,:100]
+    #latent_H = latent_H[:,:100]
+    #for k in range(latent_H.shape[0]):
+    #    print(latent_H[k])
     im = ax.imshow(latent_H, cmap='hot', interpolation='nearest')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -49,8 +51,8 @@ def vis_kinematics(model, **args):
 def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
     
     x = np.arange(ema_data.shape[0])
-    fig = plt.figure(figsize=(10, 8))
-    fig.suptitle(title)
+    fig = plt.figure(figsize=(18, 8))
+    fig.suptitle(title,fontsize=20)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
     outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
@@ -59,7 +61,8 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
                         subplot_spec=outer[i], wspace=0.1, hspace=0.1)
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
-            ax.plot(x, ema_data[:,i*2+j],c=colors[i], linestyle='dashed', label='ori')
+            _data = ema_data[:,i*2+j] #shape is (win_size,)
+            ax.plot(x, _data,c=colors[i], linestyle='dashed', label='ori')
             if mode == 'kinematics':
                 ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec')
             ax.set_xticks([])
@@ -69,14 +72,53 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
             ax.spines['right'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['left'].set_visible(False)
-            ax.get_xaxis().set_ticks([])
-            ax.get_yaxis().set_ticks([])
+            #ax.get_xaxis().set_ticks([])
+            #ax.get_yaxis().set_ticks([])
             if j == 0:
-                ax.set_ylabel(labels[i]+' x',rotation=0)
+                ax.set_ylabel(labels[i]+' x',rotation=0, fontsize=20, labelpad=10)
             else:
-                ax.set_ylabel(labels[i]+' y',rotation=0)
+                ax.set_ylabel(labels[i]+' y',rotation=0,fontsize=20, labelpad=10)
             ax.yaxis.set_label_coords(-0.05,0.5)
     plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
+    plt.clf()
+
+def draw_2d(ema_data, ema_data_hat, mode, title, **args):
+    
+    fig = plt.figure(figsize=(18, 8))
+    fig.suptitle(title,fontsize=20)
+    colors = ['b', 'g', 'r', 'c', 'm', 'y']
+    labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
+
+    means = []
+    stds = []
+    stats_path = os.path.join(os.path.join('emadata', 'cin_us_'+args['spk_id']), 'ema.stats')
+    with open(stats_path) as f:
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            line_list = line.split(" ")
+            means.append(float(line_list[0]))
+            stds.append(float(line_list[1]))
+
+    data_x_1 = ema_data[:,1*2]
+    data_y_1 = ema_data[:,1*2+1] 
+    data_x_2 = ema_data[:,2*2] 
+    data_y_2 = ema_data[:,2*2+1] 
+    data_x_3 = ema_data[:,3*2] 
+    data_y_3 = ema_data[:,3*2+1] 
+    data_x_4 = ema_data[:,4*2] 
+    data_y_4 = ema_data[:,4*2+1] 
+    data_x_5 = ema_data[:,5*2]
+    data_y_5 = ema_data[:,5*2+1] 
+
+
+    plt.plot(data_x_1, data_y_1)
+    plt.plot(data_x_2, data_y_2)
+    plt.plot(data_x_3, data_y_3)
+    plt.plot(data_x_4, data_y_4)
+    plt.plot(data_x_5, data_y_5)
+    plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()
 
 def vis_gestures(model, **args):
@@ -84,4 +126,5 @@ def vis_gestures(model, **args):
     for i in range(args['num_gestures']):
         gesture_index = i
         draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
+        draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
     
