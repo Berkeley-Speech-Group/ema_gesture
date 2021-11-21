@@ -101,17 +101,18 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
             means.append(float(line_list[0]))
             stds.append(float(line_list[1]))
 
-    data_x_1 = ema_data[:,1*2]
-    data_y_1 = ema_data[:,1*2+1] 
-    data_x_2 = ema_data[:,2*2] 
-    data_y_2 = ema_data[:,2*2+1] 
-    data_x_3 = ema_data[:,3*2] 
-    data_y_3 = ema_data[:,3*2+1] 
-    data_x_4 = ema_data[:,4*2] 
-    data_y_4 = ema_data[:,4*2+1] 
-    data_x_5 = ema_data[:,5*2]
-    data_y_5 = ema_data[:,5*2+1] 
-
+    data_x_1 = ema_data[:,0*2]
+    data_y_1 = ema_data[:,0*2+1] 
+    data_x_2 = ema_data[:,1*2] 
+    data_y_2 = ema_data[:,1*2+1] 
+    data_x_3 = ema_data[:,2*2] 
+    data_y_3 = ema_data[:,2*2+1] 
+    data_x_4 = ema_data[:,3*2] 
+    data_y_4 = ema_data[:,3*2+1] 
+    data_x_5 = ema_data[:,4*2]
+    data_y_5 = ema_data[:,4*2+1] 
+    data_x_6 = ema_data[:,5*2]
+    data_y_6 = ema_data[:,5*2+1] 
 
     plt.plot(data_x_1, data_y_1)
     plt.plot(data_x_2, data_y_2)
