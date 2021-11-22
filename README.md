@@ -56,7 +56,7 @@ python ./src/main.py --segment_len 500 --win_size 10 --batch_size 16 --num_gestu
 
 
 ```
-python ./src/main.py --segment_len 500 --win_size 10 --batch_size 16 --num_gestures 100 --model_path save_models/xxx --save_path save_models/xxx --sparse
+python src/main.py --sparse_c --sparse_c_factor 0.1 --spk_id mngu --sparse_t --sparse_t_factor 10
 ```
 
 ## Launch Tensorboard
@@ -65,16 +65,10 @@ python ./src/main.py --segment_len 500 --win_size 10 --batch_size 16 --num_gestu
 tensorboard --logdir=runs
 ```
 
-## Test | Visuallize Kinematics
+
+## Test | Visuallize Gestures, Reconstructions and Mel_Spec
 
 
 ```
-python ./src/main.py --model_path save_models/xxx --test_ema_path xxx --vis_kinematics
-```
-
-## Test | Visuallize Gestures
-
-
-```
-python ./src/main.py --model_path save_models/xxx --test_ema_path xxx --vis_gestures
+python src/main.py --vis_gestures --model_path save_models/best99.pth --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0300.npy --spk_id mngu0
 ```
