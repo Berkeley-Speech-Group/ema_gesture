@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from utils import get_sparsity
 
 class NegativeClipper(object):
 
@@ -103,27 +104,14 @@ class AE_CSNMF(nn.Module):
         inp = x.unsqueeze(-2)
         #print("after unsqueeze, inp_shape",inp.shape)
         H = F.relu(self.conv_encoder(inp)) #[B, 1, num_gestures, num_points]
-        sparsity_c, sparsity_t = self.get_sparsity(H)
+        sparsity_c, sparsity_t = get_sparsity(H)
+        sparsity_c = sparsity_c.mean()
+        sparsity_t = sparsity_t.mean()
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         latent_H = H ##[1,1,num_gestures, t]
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]
         return x, inp_hat, latent_H, sparsity_c, sparsity_t
-
-    def get_sparsity(self, H):
-        #shape of H is [B, 1, num_gestures, num_points]
-        #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
-        H = H.squeeze(1) #[B, num_gestures, num_points]
-        H_l1_c = torch.norm(H, p=1, dim=1) + 1e-6 #[B, num_points]
-        H_l2_c = torch.norm(H, p=2, dim=1) + 1e-6 #[B, num_points], plus 1e-6 because H_l2 could be 0 for some vectors
-        H_l1_t = torch.norm(H, p=1, dim=2) + 1e-6 #[B, num_gestures]
-        H_l2_t = torch.norm(H, p=2, dim=2) + 1e-6 #[B, num_gestures], plus 1e-6 because H_l2 could be 0 for some vectors
-        vector_len_c = H.shape[1] #num_gestures
-        vector_len_t = H.shape[2] #num_points
-
-        sparsity_c = (math.sqrt(vector_len_c) - H_l1_c/H_l2_c) / (math.sqrt(vector_len_c) - 1)
-        sparsity_t = (math.sqrt(vector_len_t) - H_l1_t/H_l2_t) / (math.sqrt(vector_len_t) - 1)
-        return sparsity_c.mean(), sparsity_t.mean()
 
     def loadParameters(self, path):
         self_state = self.state_dict()

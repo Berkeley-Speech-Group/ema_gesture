@@ -12,6 +12,7 @@ import os
 from scipy import signal
 from scipy.signal import get_window
 from librosa.filters import mel
+import math
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
@@ -91,28 +92,49 @@ def ema2info(**args):
 
     return ema_id, wav_data, mel_data, text_trans
 
+def get_sparsity(H):
+    #shape of H is [B, 1, num_gestures, num_points]
+    #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
+    H = H.squeeze(1) #[B, num_gestures, num_points]
+    H_l1_c = torch.norm(H, p=1, dim=1) + 1e-6 #[B, num_points]
+    H_l2_c = torch.norm(H, p=2, dim=1) + 1e-6 #[B, num_points], plus 1e-6 because H_l2 could be 0 for some vectors
+    H_l1_t = torch.norm(H, p=1, dim=2) + 1e-6 #[B, num_gestures]
+    H_l2_t = torch.norm(H, p=2, dim=2) + 1e-6 #[B, num_gestures], plus 1e-6 because H_l2 could be 0 for some vectors
+    vector_len_c = H.shape[1] #num_gestures
+    vector_len_t = H.shape[2] #num_points
+
+    sparsity_c = (math.sqrt(vector_len_c) - H_l1_c/H_l2_c) / (math.sqrt(vector_len_c) - 1)
+    sparsity_t = (math.sqrt(vector_len_t) - H_l1_t/H_l2_t) / (math.sqrt(vector_len_t) - 1)
+    return sparsity_c, sparsity_t
+
 def vis_H(model, **args):
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
     ema_ori, ema_hat, latent_H, _, _ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     #print(latent_H.shape) #[1,1,num_gestures, t]
-    latent_H = latent_H.squeeze().squeeze().detach().numpy()
-    #print(latent_H)
-    #ax = sns.heatmap(latent_H, linewidth=0.5)
+
+    latent_H = latent_H.squeeze().squeeze().detach().numpy() #[num_gesturs, t]
     fig = plt.figure(figsize=(10, 10))
     ax = plt.gca()
-    #latent_H = latent_H[:,:100]
-    #for k in range(latent_H.shape[0]):
-    #    print(latent_H[k])
     im = ax.imshow(latent_H, cmap='hot', interpolation='nearest')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
     plt.xticks(fontsize=30)
     plt.yticks(fontsize=30)
-    plt.title(text_trans, fontsize=30)
+    #plt.title(text_trans, fontsize=30)
     plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"))
     plt.clf()
+
+    #we try to print rows that are "activated"
+    _, sparsity_t = get_sparsity(torch.from_numpy(latent_H).unsqueeze(0).unsqueeze(0))
+    #print(sparsity_t.shape) #[1, 40] 
+    sparse_indices = []
+    for i in range(sparsity_t.shape[1]):
+        if sparsity_t[0][i] < 1:
+            sparse_indices.append(i)
+    print("sparse gesture indices", sparse_indices)
+
 
 def vis_kinematics(model, **args):
     ######################################
