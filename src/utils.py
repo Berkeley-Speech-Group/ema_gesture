@@ -160,6 +160,8 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     means = np.array(means)
     stds = np.array(stds)
 
+    stds = 10*np.ones(stds.shape)
+
     data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
     data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
     data_x_2 = ema_data[:,1*2] * stds[2] + means[2]
@@ -173,14 +175,15 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     data_x_6 = ema_data[:,5*2] * stds[10] + means[10]
     data_y_6 = ema_data[:,5*2+1] * stds[11] + means[11]
 
-    plt.plot(data_x_1, data_y_1)
-    plt.plot(data_x_2, data_y_2)
-    plt.plot(data_x_3, data_y_3)
-    plt.plot(data_x_4, data_y_4)
-    plt.plot(data_x_5, data_y_5)
-    plt.plot(data_x_6, data_y_6)
+    plt.plot(data_x_1, data_y_1, label='tongue dorsum')
+    plt.plot(data_x_2, data_y_2, label='tongue blade')
+    plt.plot(data_x_3, data_y_3, label='tongue tip')
+    plt.plot(data_x_4, data_y_4, label='lower incisor')
+    plt.plot(data_x_5, data_y_5, label='upper lip')
+    plt.plot(data_x_6, data_y_6, label='lower lip')
     plt.xticks(fontsize=20)
     plt.yticks(fontsize=20)
+    plt.legend()
     plt.title(title,fontdict = {'fontsize' : 20})
     plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()

@@ -172,7 +172,6 @@ if __name__ == "__main__":
 
     if args.vis_kinematics:
         vis_kinematics(model, **vars(args))
-        exit()
     if args.vis_gestures:
         vis_H(model, **vars(args))
         vis_gestures(model, **vars(args))
