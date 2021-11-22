@@ -22,7 +22,7 @@ Second, convert the standardized ema kinematics data(nema) to npy.
 python ./src/preprocess/nema2npy.py
 ```
 
-Third, re-normalize the data within [0, 1] because we are performing NMF.
+Third, re-normalize the data within [0, 1] because we are performing NMF. (Right now is step is not required)
 
 ```
 python ./src/preprocess/normalize_ema_npy.py
