@@ -1,14 +1,69 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
+import torchaudio
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.pyplot import figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
 import os
+from scipy import signal
+from scipy.signal import get_window
+from librosa.filters import mel
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
+
+def butter_highpass(cutoff, fs, order=5):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+    return b, a
+
+def pySTFT(x, fft_length=1024, hop_length=256):
+    #delta = fft_length - hop_length
+    #if (len(x) - delta) % hop_length != 0:
+    #    pad_width = (len(x) // hop_length + 1) * hop_length + delta - len(x)
+    #    x = np.pad(x, (0, int(pad_width)), mode='reflect')
+    
+    noverlap = fft_length - hop_length
+    shape = x.shape[:-1]+((x.shape[-1]-noverlap)//hop_length, fft_length)
+    strides = x.strides[:-1]+(hop_length*x.strides[-1], x.strides[-1])
+    result = np.lib.stride_tricks.as_strided(x, shape=shape,
+                                             strides=strides)
+    
+    fft_window = get_window('hann', fft_length, fftbins=True)
+    result = np.fft.rfft(fft_window * result, n=fft_length).T
+    
+    return np.abs(result)  
+
+def wav2mel(wav):
+    #input size of wav should be [1, length]
+    mel_basis = mel(16000, 1024, fmin=90, fmax=7600, n_mels=80).T
+    min_level = np.exp(-100 / 20 * np.log(10))
+    b, a = butter_highpass(30, 16000, order=5)
+
+    wav = signal.filtfilt(b, a, wav.reshape(-1).numpy())
+    D = pySTFT(wav).T
+    # Convert to mel and normalize
+    D_mel = np.dot(D, mel_basis)
+    D_db = 20 * np.log10(np.maximum(min_level, D_mel)) - 16
+    S = np.clip((D_db + 100) / 100, 0, 1)  
+    mel_spec = torch.FloatTensor(S) #shape should be [T, 80]
+    return mel_spec
+
+def draw_mel(mels, mode):
+    #shape of mels should be [B,D=80, T]
+    mels = F.relu(mels)
+    mels = mels.transpose(-1, -2)
+
+    for i in range(len(mels)):
+        #mel_i = mels[i]
+        #np.save("save_models/dsvae2/"+mode+"_mel_"+str(i)+".npy", mel_i.cpu().detach().numpy())
+        plt.imshow(mels[i][:,:].transpose(0,1).cpu().detach().numpy())
+        plt.savefig("save_models/test/"+mode+"_mel_"+str(i)+".png")
+        plt.clf()
 
 def vis_H(model, **args):
     ema_data = np.load(args['test_ema_path']) #[t, 12]
@@ -84,8 +139,8 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
 
 def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     
-    fig = plt.figure(figsize=(18, 8))
-    fig.suptitle(title,fontsize=20)
+    #fig = plt.figure(figsize=(18, 8))
+    #fig.suptitle(title,fontsize=20)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
 
@@ -127,6 +182,12 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
 
 def vis_gestures(model, **args):
     gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
+    ema_id = args['test_ema_path'].split("/")[-1][:-4]
+    wav_path = os.path.join(args['test_ema_path'].split("/")[0], args['test_ema_path'].split("/")[1])
+    wav_path = os.path.join(os.path.join(wav_path, 'wav'), ema_id+'.wav')
+    wav_data, _ = torchaudio.load(wav_path)
+    mel_data = torch.FloatTensor(wav2mel(wav_data)).transpose(0,1).unsqueeze(0)
+    draw_mel(mels=mel_data, mode=ema_id)
     for i in range(args['num_gestures']):
         gesture_index = i
         draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
