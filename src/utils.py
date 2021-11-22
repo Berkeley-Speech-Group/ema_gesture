@@ -53,7 +53,7 @@ def wav2mel(wav):
     mel_spec = torch.FloatTensor(S) #shape should be [T, 80]
     return mel_spec
 
-def draw_mel(mels, mode):
+def draw_mel(mels, mode, title):
     #shape of mels should be [B,D=80, T]
     mels = F.relu(mels)
     mels = mels.transpose(-1, -2)
@@ -62,12 +62,37 @@ def draw_mel(mels, mode):
         #mel_i = mels[i]
         #np.save("save_models/dsvae2/"+mode+"_mel_"+str(i)+".npy", mel_i.cpu().detach().numpy())
         plt.imshow(mels[i][:,:].transpose(0,1).cpu().detach().numpy())
+        plt.xticks(fontsize=30)
+        plt.yticks(fontsize=30)
+        plt.title(title, fontsize=30)
         plt.savefig("save_models/test/"+mode+"_mel_"+str(i)+".png")
-        plt.xticks(fontsize=100)
-        plt.yticks(fontsize=100)
         plt.clf()
 
+def ema2info(**args):
+    ema_id = args['test_ema_path'].split("/")[-1][:-4]
+    spk_path = os.path.join(args['test_ema_path'].split("/")[0], args['test_ema_path'].split("/")[1])
+    wav_path = os.path.join(os.path.join(spk_path, 'wav'), ema_id+'.wav')
+    wav_data, _ = torchaudio.load(wav_path)
+    mel_data = torch.FloatTensor(wav2mel(wav_data)).transpose(0,1).unsqueeze(0)
+    etc_path = os.path.join(spk_path, 'etc')
+    text_dict_path = os.path.join(etc_path, 'txt.done.data')
+    
+    emaid2text = {}
+    with open(text_dict_path) as f:
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            line_list = line.split(" ")
+            ema_id = line_list[1]
+            text = line.split("\"")[1]
+            emaid2text[ema_id] = text
+    text_trans = emaid2text[ema_id]
+
+    return ema_id, wav_data, mel_data, text_trans
+
 def vis_H(model, **args):
+    ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
     ema_ori, ema_hat, latent_H, _, _ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     #print(latent_H.shape) #[1,1,num_gestures, t]
@@ -85,6 +110,7 @@ def vis_H(model, **args):
     plt.colorbar(im, cax=cax)
     plt.xticks(fontsize=30)
     plt.yticks(fontsize=30)
+    plt.title(text_trans, fontsize=30)
     plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"))
     plt.clf()
 
@@ -106,10 +132,12 @@ def vis_kinematics(model, **args):
     
 
 def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
+
+    ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     
     x = np.arange(ema_data.shape[0])
     fig = plt.figure(figsize=(18, 8))
-    fig.suptitle(title,fontsize=20)
+    fig.suptitle(text_trans,fontsize=20)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
     outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
@@ -160,7 +188,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     means = np.array(means)
     stds = np.array(stds)
 
-    stds = 10*np.ones(stds.shape)
+    stds = 2*np.ones(stds.shape)
 
     data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
     data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
@@ -190,12 +218,8 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
 
 def vis_gestures(model, **args):
     gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
-    ema_id = args['test_ema_path'].split("/")[-1][:-4]
-    wav_path = os.path.join(args['test_ema_path'].split("/")[0], args['test_ema_path'].split("/")[1])
-    wav_path = os.path.join(os.path.join(wav_path, 'wav'), ema_id+'.wav')
-    wav_data, _ = torchaudio.load(wav_path)
-    mel_data = torch.FloatTensor(wav2mel(wav_data)).transpose(0,1).unsqueeze(0)
-    draw_mel(mels=mel_data, mode=ema_id)
+    ema_id, wav_data, mel_data, text_trans = ema2info(**args)
+    draw_mel(mels=mel_data, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
         #draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
