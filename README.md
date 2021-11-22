@@ -28,21 +28,6 @@ Third, re-normalize the data within [0, 1] because we are performing NMF.
 python ./src/preprocess/normalize_ema_npy.py
 ```
 
-## Arguments
-
-segment_len is number of ema points that is used during training. It is fixed. If sampling rate is 200Hz, it should be 200 for 1 second utterance. 
-
-win_size is the window size in vanilla CSNMF model(in the proposal). It is also one dimension of the 2D kernel in our 2D Conv layer. 
-
-num_gestures is the number of gestures. It is typically "related" or "close to" the number of phonemes(39 in CMU phn dictionary) or acoustic units(300 in HuBERT). 
-
-model_path is the path of the pretrained model. 
-
-save_path is the path that saves the current model. 
-
-test_ema_path is a path of one nma input that is used for testing. 
-
-
 
 ## Train with Sparse Gestural Scores
 
