@@ -63,6 +63,8 @@ def draw_mel(mels, mode):
         #np.save("save_models/dsvae2/"+mode+"_mel_"+str(i)+".npy", mel_i.cpu().detach().numpy())
         plt.imshow(mels[i][:,:].transpose(0,1).cpu().detach().numpy())
         plt.savefig("save_models/test/"+mode+"_mel_"+str(i)+".png")
+        plt.xticks(fontsize=100)
+        plt.yticks(fontsize=100)
         plt.clf()
 
 def vis_H(model, **args):
@@ -81,8 +83,8 @@ def vis_H(model, **args):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
-    plt.xticks(fontsize=16)
-    plt.yticks(fontsize=16)
+    plt.xticks(fontsize=30)
+    plt.yticks(fontsize=30)
     plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"))
     plt.clf()
 
@@ -177,6 +179,9 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     plt.plot(data_x_4, data_y_4)
     plt.plot(data_x_5, data_y_5)
     plt.plot(data_x_6, data_y_6)
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.title(title,fontdict = {'fontsize' : 20})
     plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()
 
