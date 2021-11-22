@@ -234,7 +234,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     plt.plot(data_x_6, data_y_6, label='lower lip')
     plt.xticks(fontsize=20)
     plt.yticks(fontsize=20)
-    plt.legend()
+    plt.legend(prop={'size': 20})
     plt.title(title,fontdict = {'fontsize' : 40})
     plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()
