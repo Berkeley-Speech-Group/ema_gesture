@@ -47,5 +47,5 @@ tensorboard --logdir=runs
 
 
 ```
-python src/main.py --vis_gestures --model_path save_models/best99.pth --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0300.npy --spk_id mngu0
+python src/main.py --vis_gestures --vis_kinematics --model_path save_models/best99.pth --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0300.npy --spk_id mngu0
 ```
