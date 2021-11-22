@@ -100,25 +100,28 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
             line_list = line.split(" ")
             means.append(float(line_list[0]))
             stds.append(float(line_list[1]))
+    means = np.array(means)
+    stds = np.array(stds)
 
-    data_x_1 = ema_data[:,0*2]
-    data_y_1 = ema_data[:,0*2+1] 
-    data_x_2 = ema_data[:,1*2] 
-    data_y_2 = ema_data[:,1*2+1] 
-    data_x_3 = ema_data[:,2*2] 
-    data_y_3 = ema_data[:,2*2+1] 
-    data_x_4 = ema_data[:,3*2] 
-    data_y_4 = ema_data[:,3*2+1] 
-    data_x_5 = ema_data[:,4*2]
-    data_y_5 = ema_data[:,4*2+1] 
-    data_x_6 = ema_data[:,5*2]
-    data_y_6 = ema_data[:,5*2+1] 
+    data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
+    data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
+    data_x_2 = ema_data[:,1*2] * stds[2] + means[2]
+    data_y_2 = ema_data[:,1*2+1] * stds[3] + means[3]
+    data_x_3 = ema_data[:,2*2] * stds[4] + means[4]
+    data_y_3 = ema_data[:,2*2+1] * stds[5] + means[5]
+    data_x_4 = ema_data[:,3*2] * stds[6] + means[6]
+    data_y_4 = ema_data[:,3*2+1] * stds[7] + means[7]
+    data_x_5 = ema_data[:,4*2] * stds[8] + means[8]
+    data_y_5 = ema_data[:,4*2+1] * stds[9] + means[9]
+    data_x_6 = ema_data[:,5*2] * stds[10] + means[10]
+    data_y_6 = ema_data[:,5*2+1] * stds[11] + means[11]
 
     plt.plot(data_x_1, data_y_1)
     plt.plot(data_x_2, data_y_2)
     plt.plot(data_x_3, data_y_3)
     plt.plot(data_x_4, data_y_4)
     plt.plot(data_x_5, data_y_5)
+    plt.plot(data_x_6, data_y_6)
     plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()
 
