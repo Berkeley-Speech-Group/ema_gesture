@@ -70,9 +70,9 @@ def draw_mel(mels, mode, title):
         plt.clf()
 
 def ema2info(**args):
-    ema_id = args['test_ema_path'].split("/")[-1][:-4]
+    cur_ema_id = args['test_ema_path'].split("/")[-1][:-4]
     spk_path = os.path.join(args['test_ema_path'].split("/")[0], args['test_ema_path'].split("/")[1])
-    wav_path = os.path.join(os.path.join(spk_path, 'wav'), ema_id+'.wav')
+    wav_path = os.path.join(os.path.join(spk_path, 'wav'), cur_ema_id+'.wav')
     wav_data, _ = torchaudio.load(wav_path)
     mel_data = torch.FloatTensor(wav2mel(wav_data)).transpose(0,1).unsqueeze(0)
     etc_path = os.path.join(spk_path, 'etc')
@@ -88,7 +88,7 @@ def ema2info(**args):
             ema_id = line_list[1]
             text = line.split("\"")[1]
             emaid2text[ema_id] = text
-    text_trans = emaid2text[ema_id]
+    text_trans = emaid2text[cur_ema_id]
 
     return ema_id, wav_data, mel_data, text_trans
 
@@ -119,7 +119,8 @@ def vis_H(model, **args):
     im = ax.imshow(latent_H, cmap='hot', interpolation='nearest')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(im, cax=cax)
+    cbar = plt.colorbar(im, cax=cax)
+    cbar.ax.tick_params(labelsize=100)
     plt.xticks(fontsize=30)
     plt.yticks(fontsize=30)
     #plt.title(text_trans, fontsize=30)
@@ -234,7 +235,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     plt.xticks(fontsize=20)
     plt.yticks(fontsize=20)
     plt.legend()
-    plt.title(title,fontdict = {'fontsize' : 20})
+    plt.title(title,fontdict = {'fontsize' : 40})
     plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()
 
