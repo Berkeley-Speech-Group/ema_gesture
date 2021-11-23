@@ -132,7 +132,8 @@ def vis_H(model, **args):
     #print(sparsity_t.shape) #[1, 40] 
     sparse_indices = []
     for i in range(sparsity_t.shape[1]):
-        if sparsity_t[0][i] < 1:
+        print(sparsity_t[0][i])
+        if sparsity_t[0][i] < 0.5:
             sparse_indices.append(i)
     print("sparse gesture indices", sparse_indices)
 
@@ -211,7 +212,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     means = np.array(means)
     stds = np.array(stds)
 
-    stds = 2*np.ones(stds.shape)
+    #stds = 2*np.ones(stds.shape)
 
     data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
     data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]

@@ -95,19 +95,39 @@ class AE_CSNMF(nn.Module):
         #nn.init.xavier_uniform(self.conv_encoder.weight)
         #nn.init.xavier_uniform(self.conv_decoder.weight)
         #self.conv_encoder.weight.data = F.relu(self.conv_encoder.weight.data)
-        #self.conv_decoder.weight.data = F.relu(self.conv_decoder.weight.data)
+        
+
+        self.conv_instancenorm = nn.InstanceNorm1d(self.num_gestures)
+        self.conv_decoder.weight.data = self.conv_instancenorm(self.conv_decoder.weight.data.squeeze(1)) #[A, num_gestures, win_size]
+        self.conv_decoder.weight.data = self.conv_decoder.weight.data.unsqueeze(1) #[A, 1, num_gestures, win_size]
+        
+        #print(self.conv_decoder.weight.data.shape) #[A, 1, num_gestures, win_size]
+
+        #shape of mean should be [A, 1, num_gestures, 1]
+
+        #self.instancenorm = nn.InstanceNorm1d(self.num_gestures)
 
     def forward(self, x):
+        #print("min of x is", torch.min(x))
         #shape of x is [B,t,num_pellets]
         x = x.transpose(-1, -2) #[B, num_pellets, t]
         #print("before unsqueeze, inp_shape",inp.shape)
         inp = x.unsqueeze(-2)
         #print("after unsqueeze, inp_shape",inp.shape)
-        H = F.relu(self.conv_encoder(inp)) #[B, 1, num_gestures, num_points]
+        H = torch.sigmoid(self.conv_encoder(inp)) #[B, 1, num_gestures, num_points]
+
+        #H = H - torch.min(H)
+        # instance stand col
+        H = H / torch.sum(H, dim=2, keepdim=True)
+        #print("min of H", torch.min(H))
+    
         sparsity_c, sparsity_t = get_sparsity(H)
         sparsity_c = sparsity_c.mean()
         sparsity_t = sparsity_t.mean()
         H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
+
+        #H = torch.sigmoid(H)
+
         latent_H = H ##[1,1,num_gestures, t]
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, ]

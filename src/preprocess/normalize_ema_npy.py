@@ -30,6 +30,6 @@ for spk_id in os.listdir(path):
             continue
         ema_path = os.path.join(ema_dir, ema)
         ema_npy = np.load(ema_path)
-        ema_npy = (ema_npy - global_min) / (global_max - global_min)
+        ema_npy = ema_npy - global_min
         np.save(ema_path, ema_npy)
                     
