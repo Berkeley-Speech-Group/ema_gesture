@@ -28,6 +28,13 @@ Third, re-normalize the data within [0, 1] because we are performing NMF. (Right
 python ./src/preprocess/normalize_ema_npy.py
 ```
 
+Fourth, run kmeans on ema huge and supervector:
+
+```
+python ./src/kmeans.py
+```
+
+
 
 ## Train with Sparse Gestural Scores
 
