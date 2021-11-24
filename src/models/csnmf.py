@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 import math
 from utils import get_sparsity
 
@@ -83,7 +84,7 @@ class AE_CNMF(nn.Module):
             self_state[name].copy_(param)
 
 class AE_CSNMF(nn.Module):
-    def __init__(self, gesture_init, **args):
+    def __init__(self, **args):
         super().__init__()
 
         self.win_size = args['win_size']
@@ -96,10 +97,14 @@ class AE_CSNMF(nn.Module):
         #nn.init.xavier_uniform(self.conv_decoder.weight)
         #self.conv_encoder.weight.data = F.relu(self.conv_encoder.weight.data)
         
+        kmeans_centers = torch.from_numpy(np.load('kmeans_centers.npy')) #[40, 12*41=492]
+        kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
+        kmeans_centers = kmeans_centers.permute(1,0,2).unsqueeze(1)
+        self.conv_decoder.weight.data = kmeans_centers
 
-        self.conv_instancenorm = nn.InstanceNorm1d(self.num_gestures)
-        self.conv_decoder.weight.data = self.conv_instancenorm(self.conv_decoder.weight.data.squeeze(1)) #[A, num_gestures, win_size]
-        self.conv_decoder.weight.data = self.conv_decoder.weight.data.unsqueeze(1) #[A, 1, num_gestures, win_size]
+        #self.conv_instancenorm = nn.InstanceNorm1d(self.num_gestures)
+        #self.conv_decoder.weight.data = self.conv_instancenorm(self.conv_decoder.weight.data.squeeze(1)) #[A, num_gestures, win_size]
+        #self.conv_decoder.weight.data = self.conv_decoder.weight.data.unsqueeze(1) #[A, 1, num_gestures, win_size]
         
         
         #print(self.conv_decoder.weight.data.shape) #[A, 1, num_gestures, win_size]
