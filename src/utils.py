@@ -246,6 +246,6 @@ def vis_gestures(model, **args):
     draw_mel(mels=mel_data, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        #draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
+        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
         draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
     

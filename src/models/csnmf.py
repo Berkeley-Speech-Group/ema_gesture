@@ -83,7 +83,7 @@ class AE_CNMF(nn.Module):
             self_state[name].copy_(param)
 
 class AE_CSNMF(nn.Module):
-    def __init__(self,**args):
+    def __init__(self, gesture_init, **args):
         super().__init__()
 
         self.win_size = args['win_size']
@@ -100,6 +100,7 @@ class AE_CSNMF(nn.Module):
         self.conv_instancenorm = nn.InstanceNorm1d(self.num_gestures)
         self.conv_decoder.weight.data = self.conv_instancenorm(self.conv_decoder.weight.data.squeeze(1)) #[A, num_gestures, win_size]
         self.conv_decoder.weight.data = self.conv_decoder.weight.data.unsqueeze(1) #[A, 1, num_gestures, win_size]
+        
         
         #print(self.conv_decoder.weight.data.shape) #[A, 1, num_gestures, win_size]
 
