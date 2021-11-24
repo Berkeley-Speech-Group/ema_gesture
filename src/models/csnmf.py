@@ -97,10 +97,16 @@ class AE_CSNMF(nn.Module):
         #nn.init.xavier_uniform(self.conv_decoder.weight)
         #self.conv_encoder.weight.data = F.relu(self.conv_encoder.weight.data)
         
+
+        ########Apply weights of k-means to gestures
         kmeans_centers = torch.from_numpy(np.load('kmeans_centers.npy')) #[40, 12*41=492]
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2).unsqueeze(1)
-        self.conv_decoder.weight.data = kmeans_centers
+        self.conv_decoder.weight.data = kmeans_centers #[12, 1, 40, 41]
+
+        ########ALso apply weights of k-means to conv_encoder
+        #print(self.conv_encoder.weight.data.shape) #[num_pellets, 1, num_gestures, win_size]
+        #self.conv_encoder.weight.data = kmeans_centers
 
         #self.conv_instancenorm = nn.InstanceNorm1d(self.num_gestures)
         #self.conv_decoder.weight.data = self.conv_instancenorm(self.conv_decoder.weight.data.squeeze(1)) #[A, num_gestures, win_size]
@@ -127,12 +133,10 @@ class AE_CSNMF(nn.Module):
         H = H / torch.sum(H, dim=2, keepdim=True)
         #print("min of H", torch.min(H))
     
+        H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
         sparsity_c, sparsity_t = get_sparsity(H)
         sparsity_c = sparsity_c.mean()
         sparsity_t = sparsity_t.mean()
-        H = H[:,:,:,:x.shape[2]] #The segment length should be the same as input sequence during testing
-
-        #H = torch.sigmoid(H)
 
         latent_H = H ##[1,1,num_gestures, t]
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)

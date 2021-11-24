@@ -212,8 +212,6 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     means = np.array(means)
     stds = np.array(stds)
 
-    #stds = 2*np.ones(stds.shape)
-
     data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
     data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
     data_x_2 = ema_data[:,1*2] * stds[2] + means[2]
