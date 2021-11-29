@@ -40,7 +40,7 @@ python ./src/kmeans.py
 
 
 ```
-python src/main.py --sparse_c --sparse_c_factor 0.1 --spk_id mngu --sparse_t --sparse_t_factor 10
+python src/main.py --sparse_c --sparse_c_factor 0 --spk_id mngu --sparse_t --sparse_t_factor 1 --learning_rate 1e-3 --save_path save_models/sota --batch_size 8
 ```
 
 ## Launch Tensorboard
@@ -54,5 +54,5 @@ tensorboard --logdir=runs
 
 
 ```
-python src/main.py --vis_gestures --vis_kinematics --model_path save_models/best99.pth --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0300.npy --spk_id mngu0
+python src/main.py --vis_gestures --model_path save_models/sota/best169.pth --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0048.npy --spk_id mngu0 --vis_kinematics
 ```
