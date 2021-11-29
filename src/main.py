@@ -182,8 +182,8 @@ if __name__ == "__main__":
     ema_dataset_train = EMA_Dataset(mode='train', **vars(args))     
     ema_dataset_test = EMA_Dataset(mode='test', **vars(args))    
     if args.NMFD:
-        V = F.relu(torch.randn(args.batch_size, 12, 500))
-        model = NMFD(V.shape, 40, 41)
+        V = F.relu(torch.randn(args.batch_size, 12, 500)).to(device)
+        model = NMFD(V.shape, 40, 41).to(device)
         trainer2(model, ema_dataset_train, ema_dataset_test,  **vars(args))
         exit()
     else: 
