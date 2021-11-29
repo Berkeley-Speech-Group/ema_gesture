@@ -187,7 +187,7 @@ class AE_CSNMF2(nn.Module):
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
 
-        self.conv_decoder_weight = kmeans_centers
+        self.conv_decoder_weight = kmeans_centers.flip(dims=[1])
 
     def forward(self, x):
         #shape of x is [B,t,A]

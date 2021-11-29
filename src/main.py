@@ -172,7 +172,6 @@ def trainer2(model, ema_dataset_train, ema_dataset_test, **args):
         break
 
 
-        
 if __name__ == "__main__":
     torch.manual_seed(12)
     torch.cuda.manual_seed(12)
