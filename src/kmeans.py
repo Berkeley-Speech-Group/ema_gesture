@@ -49,10 +49,9 @@ def kmeans_ema(spk_id_setting='mngu0'):
     print(mode + "_ size is: ", len(ema_npy_paths))
 
     ema_list = []
-    with open("emadata/"+mode+"_metalist.txt", 'w') as f:
-        for ema_npy_path in ema_npy_paths:
-            ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema, 12]
-            ema_list.append(ema_data)
+    for ema_npy_path in ema_npy_paths:
+        ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema, 12]
+        ema_list.append(ema_data)
     ema_data_huge = torch.cat(ema_list, dim=0) #[716316, 12]
     ema_data_huge = ema_data_huge.transpose(0, 1) #[12, 716316]
 
@@ -73,11 +72,14 @@ def kmeans_ema(spk_id_setting='mngu0'):
 
     super_ema_data_huge = torch.stack(super_ema_data_huge_list, dim=0).to(device) #[716316, 492]
 
+    print("shape of original data is:", super_ema_data_huge.shape) #[716316, 492]
+    super_ema_data_huge = super_ema_data_huge[:100000]
     print("shape of inp for kmeans is:", super_ema_data_huge.shape) #[716316, 492]
     cluster_ids, cluster_centers = kmeans(X=super_ema_data_huge, num_clusters=40, distance='euclidean', device=device)
 
     print("kmeans finished!!")
     print("shape of centers of kmeans is", cluster_centers.shape)
+    print("shape of ids of kmeans is", cluster_ids.shape)
     np.save("kmeans_centers.npy", cluster_centers.detach().numpy())
     np.save("kmeans_ids.npy", cluster_ids.detach().numpy())
     

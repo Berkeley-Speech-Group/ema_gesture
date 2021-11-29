@@ -8,9 +8,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+from torchnmf.nmf import NMF2D, NMFD
+from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset
-from models.csnmf import CNMF,AE_CSNMF, AE_CNMF, NegativeClipper
+from models.csnmf import CNMF,AE_CSNMF, AE_CSNMF2, AE_CNMF, NegativeClipper
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
@@ -24,7 +26,7 @@ parser.add_argument('--num_gestures', type=int, default=40, help='')
 parser.add_argument('--win_size', type=int, default=41, help='')
 parser.add_argument('--segment_len', type=int, default=500, help='')
 parser.add_argument('--num_epochs', type=int, default=500, help='')
-parser.add_argument('--learning_rate', type=float, default=0.01, help='')
+parser.add_argument('--learning_rate', type=float, default=1e-2, help='')
 parser.add_argument('--weight_decay', type=float, default=5e-5, help='')
 parser.add_argument('--model_path', type=str, default='', help='')
 parser.add_argument('--save_path', type=str, default='save_models/test', help='')
@@ -33,7 +35,7 @@ parser.add_argument('--spk_id', type=str, default='all', help='')
 parser.add_argument('--step_size', type=int, default=3, help='step_size')
 parser.add_argument('--eval_epoch', type=int, default=5, help='eval_epoch')
 parser.add_argument('--num_workers', type=int, default=4, help='num_workers')
-parser.add_argument('--lr_decay_rate',type=float, default=0.95, help='lr_decay_rate')
+parser.add_argument('--lr_decay_rate',type=float, default=0.9, help='lr_decay_rate')
 parser.add_argument('--vis_kinematics', action='store_true', help='')
 parser.add_argument('--vis_gestures', action='store_true', help='')
 parser.add_argument('--sparse_c', action='store_true', help='')
@@ -43,6 +45,7 @@ parser.add_argument('--sparse_c_factor',type=float, default=1e-3, help='')
 parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
 parser.add_argument('--sparse_c_base',type=float, default=0.95, help='')
 parser.add_argument('--sparse_t_base',type=float, default=0.95, help='')
+parser.add_argument('--NMFD', action='store_true', help='')
 
 args = parser.parse_args()
 
@@ -119,8 +122,9 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             count += 1
         print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
         
-        if (e+1) % args['step_size'] == 0:
-            lr_scheduler.step()
+        #if (e+1) % args['step_size'] == 0:
+        #    lr_scheduler.step()
+        lr_scheduler.step(rec_loss.item())
         if (e+1) % args['eval_epoch'] == 0:
             ####start evaluation
             eval_model(model, ema_dataloader_test)
@@ -136,7 +140,37 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
         f.write("Sparsity_c is %.4f\n"%(sum(sparsity_c_e)/len(sparsity_c_e)))
         f.write("Sparsity_t is %.4f\n"%(sum(sparsity_t_e)/len(sparsity_t_e)))
         f.write("batch_size is {} \n".format(args['batch_size']))
-        f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
+        #f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
+
+def trainer2(model, ema_dataset_train, ema_dataset_test, **args):
+
+    ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args['batch_size'], shuffle=True)
+    ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args['batch_size'], shuffle=False)
+
+    #Write into logs
+    if not os.path.exists(args['save_path']):
+        os.makedirs(args['save_path'])
+    log_path = os.path.join(args['save_path'], "logs.txt")
+    f = open(log_path, 'w')
+    os.chmod(log_path, 755)
+    f.write(args['save_path'] + '\n')
+    f.write("Process is " + str(os.getppid()))
+
+    writer = SummaryWriter()
+    count = 0
+
+    rec_loss_e = []
+
+    for i, ema in enumerate(ema_dataloader_train):
+        #ema.shape #[batch_size,segment_len,num_pellets]
+        ema = ema.to(device)
+        ema = ema.transpose(1,2)
+        model.fit(ema)
+        rec = model()
+        rec_loss = kl_div(rec, ema)
+        loss = rec_loss
+        break
+
 
         
 if __name__ == "__main__":
@@ -146,8 +180,16 @@ if __name__ == "__main__":
     random.seed(12)
 
     ema_dataset_train = EMA_Dataset(mode='train', **vars(args))     
-    ema_dataset_test = EMA_Dataset(mode='test', **vars(args))     
-    model = AE_CSNMF(**vars(args)).to(device)
+    ema_dataset_test = EMA_Dataset(mode='test', **vars(args))    
+    if args.NMFD:
+        V = F.relu(torch.randn(args.batch_size, 12, 500))
+        model = NMFD(V.shape, 40, 41)
+        trainer2(model, ema_dataset_train, ema_dataset_test,  **vars(args))
+        exit()
+    else: 
+        model = AE_CSNMF2(**vars(args)).to(device)
+    
+
     clipper = NegativeClipper()
 
     if not os.path.exists(args.model_path):
@@ -179,7 +221,9 @@ if __name__ == "__main__":
 
     #if there is no eval task, start training:
     optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=args.step_size, gamma=args.lr_decay_rate)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=4, threshold=0.0001)
     trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
 
 

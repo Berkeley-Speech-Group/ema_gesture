@@ -239,7 +239,8 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     plt.clf()
 
 def vis_gestures(model, **args):
-    gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
+    #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
+    gestures = model.conv_decoder_weight.unsqueeze(1)
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     draw_mel(mels=mel_data, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
