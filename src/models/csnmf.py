@@ -177,10 +177,15 @@ class AE_CSNMF2(nn.Module):
         self.t = args['segment_len']
         self.num_pellets = args['num_pellets']
         self.num_gestures = args['num_gestures']
-        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=7,padding=3)
-        self.conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=7,padding=3)
-        self.conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=7,padding=3)
-        self.conv_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=7,padding=3)
+        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=41,padding=20) #larger is better
+        self.conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder5 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder6 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder7 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
+        self.sparse_c_base = args['sparse_c_base']
+        self.sparse_t_base = args['sparse_t_base']
 
         ######Apply weights of k-means to gestures
         kmeans_centers = torch.from_numpy(np.load('kmeans_centers.npy')) #[40, 12*41=492]
@@ -194,17 +199,33 @@ class AE_CSNMF2(nn.Module):
         time_steps = x.shape[1]
         x = x.transpose(-1, -2) #[B, A, t]
         H = F.relu(self.conv_encoder1(x)) #[B, C, t]
-        H = F.relu(self.conv_encoder2(H)) #[B, C, t] 
+        H = F.relu(self.conv_encoder2(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder3(H)) #[B, C, t]
-        H = F.relu(self.conv_encoder4(H)) #[B, C, t] . #Three encoder layer is the best!
+        #H = F.relu(self.conv_encoder4(H)) #[B, C, t]
+        #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
+        #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
+        H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
         #H = H / H.sum(dim=1, keepdim=True) #This is Bad for everything
+
+        #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
+        # l2_norm = torch.norm(H, p=2, dim=1) #[B, t]
+        # vec_len = H.shape[1]
+        # l1_norm_by_base = (math.sqrt(vec_len) - self.sparse_c_base * (math.sqrt(vec_len) - 1)) * l2_norm #[B, t]
+        # l1_norm_by_base = l1_norm_by_base.unsqueeze(1) #[B, 1, t]
+        # H_sum = torch.sum(H, dim=1, keepdim=True) #[B, 1, t]
+        # s = H + (l1_norm_by_base-H_sum) / vec_len #[B, 1, t]
+        # alpha = 0.5
+        # s_hat = (1 - alpha) * (l1_norm_by_base) / vec_len + alpha * s
+        #print(s_hat.shape)
+
         latent_H = H
         sparsity_c, sparsity_t = get_sparsity(H)
-        # sparsity_c = torch.norm(H, p=1, dim=2)
-        # sparsity_t = torch.norm(H, p=1, dim=3)
+        #print(sparsity_c.shape) #[B, t]
+        #print(sparsity_t.shape) #[B, C]
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.conv_decoder_weight.flip(2), padding=20)
+        inp_hat = F.relu(inp_hat)
         return x, inp_hat, latent_H, sparsity_c, sparsity_t
 
     def loadParameters(self, path):

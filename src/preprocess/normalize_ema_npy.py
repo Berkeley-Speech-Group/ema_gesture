@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 path = 'emadata'
 
@@ -23,10 +24,14 @@ feature_9 = []
 feature_10 = []
 feature_11 = []
 feature_12 = []
+feature_all = []
 
-for spk_id in os.listdir(path):
+for spk_id in tqdm(os.listdir(path)):
     if not spk_id.startswith('cin'):
         continue
+    if 'mngu0' not in spk_id:
+        continue
+    print(spk_id)
     spk_id_path = os.path.join(path, spk_id)
     ema_dir = os.path.join(spk_id_path, "nema")
 
@@ -35,20 +40,23 @@ for spk_id in os.listdir(path):
             continue
         ema_path = os.path.join(ema_dir, ema)
         ema_npy = np.load(ema_path) #[T, 12]
-        feature_0.append(ema_npy[0])
-        feature_1.append(ema_npy[1])
-        feature_2.append(ema_npy[2])
-        feature_3.append(ema_npy[3])
-        feature_4.append(ema_npy[4])
-        feature_5.append(ema_npy[5])
-        feature_6.append(ema_npy[6])
-        feature_7.append(ema_npy[7])
-        feature_8.append(ema_npy[8])
-        feature_9.append(ema_npy[9])
-        feature_10.append(ema_npy[10])
-        feature_11.append(ema_npy[11])
+        zero_npy = np.zeros_like(ema_npy)
+        #ema_npy = np.where(np.abs(ema_npy)>6, zero_npy, ema_npy)
+        feature_0.append(ema_npy[0]) #[12]
+        feature_1.append(ema_npy[1]) #[12]
+        feature_2.append(ema_npy[2]) #[12]
+        feature_3.append(ema_npy[3]) #[12]
+        feature_4.append(ema_npy[4]) #[12]
+        feature_5.append(ema_npy[5]) #[12]
+        feature_6.append(ema_npy[6]) #[12]
+        feature_7.append(ema_npy[7]) #[12]
+        feature_8.append(ema_npy[8]) #[12]
+        feature_9.append(ema_npy[9]) #[12]
+        feature_10.append(ema_npy[10]) #[12]
+        feature_11.append(ema_npy[11]) #[12]
         #global_min = np.minimum(global_min, np.min(ema_npy, axis=0))
         #global_max = np.maximum(global_max, np.max(ema_npy, axis=0))
+        feature_all.append(ema_npy.reshape(-1))
         global_min = min(global_min, np.min(ema_npy))
         global_max = max(global_max, np.max(ema_npy))
 
@@ -67,6 +75,8 @@ feature_8 = np.concatenate(feature_8, axis=0)
 feature_9 = np.concatenate(feature_9, axis=0)
 feature_10 = np.concatenate(feature_10, axis=0)
 feature_11 = np.concatenate(feature_11, axis=0)
+feature_all = np.concatenate(feature_all, axis=0)
+
 plt.hist(feature_0, 20)
 plt.title("feature_0, before")
 plt.savefig("feature_0_before.png")
@@ -127,6 +137,11 @@ plt.title("feature_11, before")
 plt.savefig("feature_11_before.png")
 plt.clf()
 
+plt.hist(feature_all, 20)
+plt.title("feature_all, before")
+plt.savefig("feature_all_before.png")
+plt.clf()
+
 global_min_after = 1e6*np.ones(12)
 global_max_after = -1e6*np.ones(12)
 
@@ -143,9 +158,12 @@ feature_9 = []
 feature_10 = []
 feature_11 = []
 feature_12 = []
+feature_all = []
 
-for spk_id in os.listdir(path):
+for spk_id in tqdm(os.listdir(path)):
     if not spk_id.startswith('cin'):
+        continue
+    if 'mngu0' not in spk_id:
         continue
     spk_id_path = os.path.join(path, spk_id)
     ema_dir = os.path.join(spk_id_path, "nema")
@@ -157,7 +175,8 @@ for spk_id in os.listdir(path):
         ema_npy = np.load(ema_path)
         #ema_npy = (ema_npy - global_min.reshape(1, -1)) / (global_max.reshape(1, -1) - global_min.reshape(1, -1))
         #ema_npy = (ema_npy - global_min.reshape(1, -1))
-        ema_npy = (ema_npy - global_min)
+       
+        ema_npy = ema_npy - global_min
         feature_0.append(ema_npy[0])
         feature_1.append(ema_npy[1])
         feature_2.append(ema_npy[2])
@@ -170,12 +189,14 @@ for spk_id in os.listdir(path):
         feature_9.append(ema_npy[9])
         feature_10.append(ema_npy[10])
         feature_11.append(ema_npy[11])
-        global_min_after = np.minimum(global_min_after, np.min(ema_npy, axis=0))
-        global_max_after = np.maximum(global_max_after, np.max(ema_npy, axis=0))
+        feature_all.append(ema_npy.reshape(-1))
+
+        #global_min_after = np.minimum(global_min_after, np.min(ema_npy, axis=0))
+        #global_max_after = np.maximum(global_max_after, np.max(ema_npy, axis=0))
         np.save(ema_path, ema_npy)
 
-print("global min after scaling is", global_min_after)
-print('global max after scaling is', global_max_after)
+#print("global min after scaling is", global_min_after)
+#print('global max after scaling is', global_max_after)
 
 feature_0 = np.concatenate(feature_0, axis=0)
 feature_1 = np.concatenate(feature_1, axis=0)
@@ -189,6 +210,7 @@ feature_8 = np.concatenate(feature_8, axis=0)
 feature_9 = np.concatenate(feature_9, axis=0)
 feature_10 = np.concatenate(feature_10, axis=0)
 feature_11 = np.concatenate(feature_11, axis=0)
+feature_all = np.concatenate(feature_all, axis=0)
 plt.hist(feature_0, 20)
 plt.title("feature_0, after")
 plt.savefig("feature_0_after.png")
@@ -247,4 +269,9 @@ plt.clf()
 plt.hist(feature_11, 20)
 plt.title("feature_11, after")
 plt.savefig("feature_11_after.png")
+plt.clf()
+
+plt.hist(feature_all, 20)
+plt.title("feature_all, after")
+plt.savefig("feature_all_after.png")
 plt.clf()
