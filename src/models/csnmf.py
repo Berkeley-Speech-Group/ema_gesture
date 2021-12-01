@@ -177,7 +177,7 @@ class AE_CSNMF2(nn.Module):
         self.t = args['segment_len']
         self.num_pellets = args['num_pellets']
         self.num_gestures = args['num_gestures']
-        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=41,padding=20) #larger is better
+        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=21,padding=10) #larger is better
         self.conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
         self.conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
         self.conv_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
@@ -204,20 +204,23 @@ class AE_CSNMF2(nn.Module):
         #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
         H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
-        #H = H / torch.norm(H, p=2, dim=1, keepdim=True) #For L2 norm to be one
+        H = H / torch.norm(H, p=2, dim=1, keepdim=True) #For L2 norm to be one
 
-        #H = H / H.sum(dim=1, keepdim=True) #This is Bad for everything
-
-        #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
-        # l2_norm = torch.norm(H, p=2, dim=1) #[B, t]
-        # vec_len = H.shape[1]
-        # l1_norm_by_base = (math.sqrt(vec_len) - self.sparse_c_base * (math.sqrt(vec_len) - 1)) * l2_norm #[B, t]
-        # l1_norm_by_base = l1_norm_by_base.unsqueeze(1) #[B, 1, t]
-        # H_sum = torch.sum(H, dim=1, keepdim=True) #[B, 1, t]
-        # s = H + (l1_norm_by_base-H_sum) / vec_len #[B, 1, t]
-        # alpha = 0.5
-        # s_hat = (1 - alpha) * (l1_norm_by_base) / vec_len + alpha * s
-        #print(s_hat.shape)
+        H_list1 = []
+        for b in range(H.shape[0]):
+            H_list2 = []
+            for t in range(H.shape[2]):
+                col_vec = H[b,:,t]
+                vec_len = H.shape[1]
+                k2 = 1
+                #k1 = (math.sqrt(vec_len) - 0.95 * (math.sqrt(vec_len) - 1)) * k2
+                k1 = vec_len ** 0.5 * (1 - 0.9) + 0.9
+                col_vec = self._proj_func(col_vec, k1, 1.0) 
+                H_list2.append(col_vec)
+            H_list1.append(torch.stack(H_list2, dim=0))
+        H = torch.stack(H_list1, dim=0) #[B, T, C]
+        H = H.permute(0, 2, 1)
+        #print("#######", H.shape)
 
         latent_H = H
         sparsity_c, sparsity_t = get_sparsity(H)
@@ -227,6 +230,39 @@ class AE_CSNMF2(nn.Module):
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.conv_decoder_weight.flip(2), padding=20)
         return x, inp_hat, latent_H, sparsity_c, sparsity_t
+
+    def _proj_func(self, s,k1,k2):
+        s_shape = s.size()
+        s = s.reshape(-1)
+        N = s.numel()
+        v = s + (k1 - s.sum()) / N
+
+        zero_coef = torch.zeros(N, dtype=torch.bool, device=s.device)
+        while True:
+            m = k1 / (N - zero_coef.count_nonzero())
+            w = torch.where(~zero_coef, v - m, v)
+            a = w @ w
+            b = 2 * w @ v
+            c = v @ v - k2
+            alphap = (-b + (b * b - 4 * a * c).relu().sqrt()) * 0.5 / a
+            #v.add_(w, alpha=alphap.item())
+            v = v + alphap * w
+        
+            mask = v < 0
+            
+            #print("mask$$$$", mask)
+            
+            if not torch.any(mask):
+                break
+    
+            zero_coef |= mask
+            v = F.relu(v)
+            v = v + (k1 - v.sum()) / (N - zero_coef.count_nonzero())
+            v = F.relu(v)
+            #print("##########################v_single", v)
+            break
+            
+        return v.view(s_shape)
 
     def loadParameters(self, path):
         self_state = self.state_dict()
@@ -242,3 +278,5 @@ class AE_CSNMF2(nn.Module):
                 print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
                 continue
             self_state[name].copy_(param)
+
+    
