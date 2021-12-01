@@ -188,10 +188,9 @@ class AE_CSNMF2(nn.Module):
         self.sparse_t_base = args['sparse_t_base']
 
         ######Apply weights of k-means to gestures
-        kmeans_centers = torch.from_numpy(np.load('kmeans_centers.npy')) #[40, 12*41=492]
+        kmeans_centers = torch.from_numpy(np.load('kmeans_centers_ori.npy')) #[40, 12*41=492]
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
-
         self.conv_decoder_weight = kmeans_centers.flip(dims=[1])
 
     def forward(self, x):
@@ -205,6 +204,8 @@ class AE_CSNMF2(nn.Module):
         #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
         H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
+        #H = H / torch.norm(H, p=2, dim=1, keepdim=True) #For L2 norm to be one
+
         #H = H / H.sum(dim=1, keepdim=True) #This is Bad for everything
 
         #sparsity = (sqrt(n) - l1/l2) / (sqrt(n) - 1)
@@ -225,7 +226,6 @@ class AE_CSNMF2(nn.Module):
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.conv_decoder_weight.flip(2), padding=20)
-        inp_hat = F.relu(inp_hat)
         return x, inp_hat, latent_H, sparsity_c, sparsity_t
 
     def loadParameters(self, path):
