@@ -177,7 +177,7 @@ class AE_CSNMF2(nn.Module):
         self.t = args['segment_len']
         self.num_pellets = args['num_pellets']
         self.num_gestures = args['num_gestures']
-        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=21,padding=10) #larger is better
+        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=15,padding=7) #larger is better
         self.conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
         self.conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
         self.conv_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
@@ -186,12 +186,33 @@ class AE_CSNMF2(nn.Module):
         self.conv_encoder7 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
         self.sparse_c_base = args['sparse_c_base']
         self.sparse_t_base = args['sparse_t_base']
+        self.project = args['project']
+
+        # torch.nn.init.kaiming_uniform(self.conv_encoder1.weight)
+        # torch.nn.init.kaiming_uniform(self.conv_encoder2.weight)
+        # torch.nn.init.xavier_uniform(self.conv_encoder3.weight)
+        # torch.nn.init.xavier_uniform(self.conv_encoder4.weight)
+        # torch.nn.init.xavier_uniform(self.conv_encoder5.weight)
+        # torch.nn.init.xavier_uniform(self.conv_encoder6.weight)
+        # torch.nn.init.kaiming_uniform(self.conv_encoder7.weight)
+
+        # self.conv_encoder1.weight.data.fill_(0.01)
+        # self.conv_encoder2.weight.data.fill_(0.01)
+        # self.conv_encoder3.weight.data.fill_(0.01)
+        # self.conv_encoder4.weight.data.fill_(0.01)
+        # self.conv_encoder5.weight.data.fill_(0.01)
+        # self.conv_encoder6.weight.data.fill_(0.01)
+        # self.conv_encoder7.weight.data.fill_(0.01)
 
         ######Apply weights of k-means to gestures
         kmeans_centers = torch.from_numpy(np.load('kmeans_centers_ori.npy')) #[40, 12*41=492]
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
-        self.conv_decoder_weight = kmeans_centers.flip(dims=[1])
+
+        indexes = torch.randperm(kmeans_centers.shape[1])
+        kmeans_centers = kmeans_centers[:,indexes,:]
+
+        self.conv_decoder_weight = nn.Parameter(kmeans_centers)
 
     def forward(self, x):
         #shape of x is [B,t,A]
@@ -204,23 +225,23 @@ class AE_CSNMF2(nn.Module):
         #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
         H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
-        H = H / torch.norm(H, p=2, dim=1, keepdim=True) #For L2 norm to be one
+        #H = H / torch.norm(H, p=2, dim=1, keepdim=True) #For L2 norm to be one
 
-        H_list1 = []
-        for b in range(H.shape[0]):
-            H_list2 = []
-            for t in range(H.shape[2]):
-                col_vec = H[b,:,t]
-                vec_len = H.shape[1]
-                k2 = 1
-                #k1 = (math.sqrt(vec_len) - 0.95 * (math.sqrt(vec_len) - 1)) * k2
-                k1 = vec_len ** 0.5 * (1 - 0.9) + 0.9
-                col_vec = self._proj_func(col_vec, k1, 1.0) 
-                H_list2.append(col_vec)
-            H_list1.append(torch.stack(H_list2, dim=0))
-        H = torch.stack(H_list1, dim=0) #[B, T, C]
-        H = H.permute(0, 2, 1)
-        #print("#######", H.shape)
+        if self.project:
+            H_list1 = []
+            for b in range(H.shape[0]):
+                H_list2 = []
+                for t in range(H.shape[2]):
+                    col_vec = H[b,:,t]
+                    vec_len = H.shape[1]
+                    k2 = torch.norm(col_vec, p=2, dim=-1)
+                    k1 = (math.sqrt(vec_len) - 0.9 * (math.sqrt(vec_len) - 1)) * k2
+                    #k1 = vec_len ** 0.5 * (1 - 0.8) + 0.8
+                    col_vec = self._proj_func(col_vec, k1, 1.0) 
+                    H_list2.append(col_vec)
+                H_list1.append(torch.stack(H_list2, dim=0))
+            H = torch.stack(H_list1, dim=0) #[B, T, C]
+            H = H.permute(0, 2, 1) #[B, C, T]
 
         latent_H = H
         sparsity_c, sparsity_t = get_sparsity(H)
@@ -229,6 +250,8 @@ class AE_CSNMF2(nn.Module):
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.conv_decoder_weight.flip(2), padding=20)
+        #print(self.conv_decoder_weight.data[0][0])
+        #print(self.conv_encoder1.weight.data[0][0])
         return x, inp_hat, latent_H, sparsity_c, sparsity_t
 
     def _proj_func(self, s,k1,k2):

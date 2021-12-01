@@ -133,7 +133,7 @@ def vis_H(model, **args):
     sparse_indices = []
     for i in range(sparsity_t.shape[1]):
         print(sparsity_t[0][i])
-        if sparsity_t[0][i] < 0.5:
+        if sparsity_t[0][i] < 0.88:
             sparse_indices.append(i)
     print("sparse gesture indices", sparse_indices)
 

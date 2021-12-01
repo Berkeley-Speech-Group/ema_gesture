@@ -46,6 +46,7 @@ parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
 parser.add_argument('--sparse_c_base',type=float, default=0.95, help='')
 parser.add_argument('--sparse_t_base',type=float, default=0.95, help='')
 parser.add_argument('--NMFD', action='store_true', help='')
+parser.add_argument('--project', action='store_true', help='')
 
 args = parser.parse_args()
 
@@ -129,6 +130,7 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             ####start evaluation
             eval_model(model, ema_dataloader_test)
 
+        torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs
         if (e + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
