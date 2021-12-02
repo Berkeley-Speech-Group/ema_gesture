@@ -105,12 +105,24 @@ def get_sparsity(H):
 
     sparsity_c = (math.sqrt(vector_len_c) - H_l1_c/H_l2_c) / (math.sqrt(vector_len_c) - 1)
     sparsity_t = (math.sqrt(vector_len_t) - H_l1_t/H_l2_t) / (math.sqrt(vector_len_t) - 1)
-    return sparsity_c, sparsity_t
+
+
+    t_histogram = (1 - sparsity_t + 1e-5) / (1 - sparsity_t + 1e-5).sum(dim=-1, keepdim=True)
+    entropy_t = (-t_histogram * torch.log(t_histogram)).mean(dim=-1).mean() #entropy is always non-negative
+    #we need to increase E[-plogp] in order to increase diversity, so we just decrease E[plogp] 
+    entropy_t = -entropy_t
+
+    c_histogram = (1 - sparsity_c + 1e-5) / (1 - sparsity_c + 1e-5).sum(dim=-1, keepdim=True)
+    entropy_c = (-c_histogram * torch.log(c_histogram)).mean(dim=-1).mean() #entropy is always non-negative
+    #we need to increase E[-plogp] in order to increase diversity, so we just decrease E[plogp] 
+    entropy_c = -entropy_c
+    return sparsity_c, sparsity_t, entropy_t, entropy_c
+    
 
 def vis_H(model, **args):
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    ema_ori, ema_hat, latent_H, _, _ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ema_ori, ema_hat, latent_H, _, _,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     #print(latent_H.shape) #[1,1,num_gestures, t]
 
     latent_H = latent_H.squeeze().squeeze().detach().numpy() #[num_gesturs, t]
@@ -128,7 +140,7 @@ def vis_H(model, **args):
     plt.clf()
 
     #we try to print rows that are "activated"
-    _, sparsity_t = get_sparsity(torch.from_numpy(latent_H).unsqueeze(0).unsqueeze(0))
+    _, sparsity_t, entropy_t,_ = get_sparsity(torch.from_numpy(latent_H).unsqueeze(0).unsqueeze(0))
     #print(sparsity_t.shape) #[1, 40] 
     sparse_indices = []
     for i in range(sparsity_t.shape[1]):
@@ -149,7 +161,7 @@ def vis_kinematics(model, **args):
     ######################################
     ############Reconstruction
     #####################################
-    ema_ori, ema_hat,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ema_ori, ema_hat,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
 
     draw_kinematics(ema_data, ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
@@ -225,12 +237,34 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     data_x_6 = ema_data[:,5*2] * stds[10] + means[10]
     data_y_6 = ema_data[:,5*2+1] * stds[11] + means[11]
 
-    plt.plot(data_x_1, data_y_1, label='tongue dorsum')
-    plt.plot(data_x_2, data_y_2, label='tongue blade')
-    plt.plot(data_x_3, data_y_3, label='tongue tip')
-    plt.plot(data_x_4, data_y_4, label='lower incisor')
-    plt.plot(data_x_5, data_y_5, label='upper lip')
-    plt.plot(data_x_6, data_y_6, label='lower lip')
+    #plt.plot(data_x_1, data_y_1, label='tongue dorsum')
+
+    indices_new = 3 * np.arange((len(data_x_1) // 3) + 1)
+    data_x_1 = data_x_1[indices_new]
+    data_x_2 = data_x_2[indices_new]
+    data_x_3 = data_x_3[indices_new]
+    data_x_4 = data_x_4[indices_new]
+    data_x_5 = data_x_5[indices_new]
+    data_x_6 = data_x_6[indices_new]
+    data_y_1 = data_y_1[indices_new]
+    data_y_2 = data_y_2[indices_new]
+    data_y_3 = data_y_3[indices_new]
+    data_y_4 = data_y_4[indices_new]
+    data_y_5 = data_y_5[indices_new]
+    data_y_6 = data_y_6[indices_new]
+
+    plt.quiver(data_x_1[:-1], data_y_1[:-1], data_x_1[1:]-data_x_1[:-1], data_y_1[1:]-data_y_1[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='tongue dorsum', color='red')
+    plt.quiver(data_x_2[:-1], data_y_2[:-1], data_x_2[1:]-data_x_2[:-1], data_y_2[1:]-data_y_2[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='tongue blade', color='blue')
+    plt.quiver(data_x_3[:-1], data_y_3[:-1], data_x_3[1:]-data_x_3[:-1], data_y_3[1:]-data_y_3[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='tongue tip', color='black')
+    plt.quiver(data_x_4[:-1], data_y_4[:-1], data_x_4[1:]-data_x_4[:-1], data_y_4[1:]-data_y_4[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='lower incisor', color='orange')
+    plt.quiver(data_x_5[:-1], data_y_5[:-1], data_x_5[1:]-data_x_5[:-1], data_y_5[1:]-data_y_5[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='upper lip', color='purple')
+    plt.quiver(data_x_6[:-1], data_y_6[:-1], data_x_6[1:]-data_x_6[:-1], data_y_6[1:]-data_y_6[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='lower lip', color='grey')
+
+    #plt.plot(data_x_2, data_y_2, label='tongue blade')
+    #plt.plot(data_x_3, data_y_3, label='tongue tip')
+    #plt.plot(data_x_4, data_y_4, label='lower incisor')
+    #plt.plot(data_x_5, data_y_5, label='upper lip')
+    #plt.plot(data_x_6, data_y_6, label='lower lip')
     plt.xticks(fontsize=20)
     plt.yticks(fontsize=20)
     plt.legend(prop={'size': 20})

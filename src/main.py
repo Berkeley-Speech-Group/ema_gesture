@@ -40,9 +40,13 @@ parser.add_argument('--vis_kinematics', action='store_true', help='')
 parser.add_argument('--vis_gestures', action='store_true', help='')
 parser.add_argument('--sparse_c', action='store_true', help='')
 parser.add_argument('--sparse_t', action='store_true', help='')
+parser.add_argument('--entropy_t', action='store_true', help='')
+parser.add_argument('--entropy_c', action='store_true', help='')
 parser.add_argument('--rec_factor',type=float, default=1, help='')
 parser.add_argument('--sparse_c_factor',type=float, default=1e-3, help='')
 parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
+parser.add_argument('--entropy_t_factor',type=float, default=1, help='')
+parser.add_argument('--entropy_c_factor',type=float, default=1, help='')
 parser.add_argument('--sparse_c_base',type=float, default=0.95, help='')
 parser.add_argument('--sparse_t_base',type=float, default=0.95, help='')
 parser.add_argument('--NMFD', action='store_true', help='')
@@ -65,7 +69,7 @@ def eval_model(model, ema_dataloader_test):
         ema = ema.to(device)
         model.eval()
         optimizer.zero_grad()
-        inp, inp_hat, _, sparsity_c, sparsity_t = model(ema)
+        inp, inp_hat, _, sparsity_c, sparsity_t, entropy_t,_ = model(ema)
         rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
         rec_loss_e.append(rec_loss.item())
         sparsity_c_e.append(float(sparsity_c))  
@@ -99,7 +103,7 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             model.train()
             optimizer.zero_grad()
-            inp, inp_hat, _,sparsity_c, sparsity_t = model(ema)
+            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema)
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss = args['rec_factor']*rec_loss
 
@@ -109,11 +113,17 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             if args['sparse_t']:
                 #loss += -args['sparse_t_factor']*sparsity_t
                 loss += args['sparse_t_factor']*(sparsity_t-args['sparse_t_base'])**2
+            if args['entropy_t']:
+                #loss += -args['sparse_c_factor']*sparsity_c
+                loss += args['entropy_t_factor']*(entropy_t)
+            if args['entropy_c']:
+                #loss += -args['sparse_c_factor']*sparsity_c
+                loss += args['entropy_c_factor']*(entropy_c)
 
             loss.backward()
             optimizer.step()
             #model.conv_decoder.apply(clipper)
-            sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t))
+            sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c))
             rec_loss_e.append(rec_loss.item())
             sparsity_c_e.append(float(sparsity_c))
             sparsity_t_e.append(float(sparsity_t))

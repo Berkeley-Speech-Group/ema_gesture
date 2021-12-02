@@ -209,8 +209,8 @@ class AE_CSNMF2(nn.Module):
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
 
-        indexes = torch.randperm(kmeans_centers.shape[1])
-        kmeans_centers = kmeans_centers[:,indexes,:]
+        #indexes = torch.randperm(kmeans_centers.shape[1])
+        #kmeans_centers = kmeans_centers[:,indexes,:]
 
         self.conv_decoder_weight = nn.Parameter(kmeans_centers)
 
@@ -244,7 +244,7 @@ class AE_CSNMF2(nn.Module):
             H = H.permute(0, 2, 1) #[B, C, T]
 
         latent_H = H
-        sparsity_c, sparsity_t = get_sparsity(H)
+        sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
         #print(sparsity_c.shape) #[B, t]
         #print(sparsity_t.shape) #[B, C]
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
@@ -252,7 +252,7 @@ class AE_CSNMF2(nn.Module):
         inp_hat = F.conv1d(H, self.conv_decoder_weight.flip(2), padding=20)
         #print(self.conv_decoder_weight.data[0][0])
         #print(self.conv_encoder1.weight.data[0][0])
-        return x, inp_hat, latent_H, sparsity_c, sparsity_t
+        return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
 
     def _proj_func(self, s,k1,k2):
         s_shape = s.size()
