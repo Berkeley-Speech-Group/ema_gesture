@@ -51,6 +51,8 @@ parser.add_argument('--sparse_c_base',type=float, default=0.95, help='')
 parser.add_argument('--sparse_t_base',type=float, default=0.95, help='')
 parser.add_argument('--NMFD', action='store_true', help='')
 parser.add_argument('--project', action='store_true', help='')
+parser.add_argument('--with_phoneme', action='store_true', help='')
+
 
 args = parser.parse_args()
 

@@ -12,6 +12,8 @@ import os
 from scipy import signal
 from scipy.signal import get_window
 from librosa.filters import mel
+import librosa
+import librosa.display
 import math
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
@@ -41,31 +43,57 @@ def pySTFT(x, fft_length=1024, hop_length=256):
 
 def wav2mel(wav):
     #input size of wav should be [1, length]
-    mel_basis = mel(16000, 1024, fmin=90, fmax=7600, n_mels=80).T
+    sr = 16000
+    mel_basis = mel(sr, 1024, fmin=10, fmax=8000, n_mels=60).T
     min_level = np.exp(-100 / 20 * np.log(10))
-    b, a = butter_highpass(30, 16000, order=5)
-
+    b, a = butter_highpass(3, sr, order=5)
     wav = signal.filtfilt(b, a, wav.reshape(-1).numpy())
+    #wav = wav.reshape(-1).numpy()
+   
     D = pySTFT(wav).T
     # Convert to mel and normalize
     D_mel = np.dot(D, mel_basis)
     D_db = 20 * np.log10(np.maximum(min_level, D_mel)) - 16
-    S = np.clip((D_db + 100) / 100, 0, 1)  
+    #S = np.clip((D_db + 100) / 100, 0, 1)  
+    S = D_db
     mel_spec = torch.FloatTensor(S) #shape should be [T, 80]
+
+    #y, sr = librosa.load("off.wav") #y:[21969, ]
+    # y = wav[0].cpu().numpy()
+    # mel_spec = librosa.feature.melspectrogram(y=y, sr=22050)
+    # print(mel_spec.shape)
     return mel_spec
+
+
+def draw_mel2(wav=None, mode=None, title=None):
+    y, sr = librosa.load(wav) #y:[21969, ]
+    librosa.feature.melspectrogram(y=y, sr=sr)
+    #plt.figure(figsize=(10, 4))
+    librosa.display.specshow(librosa.feature.melspectrogram(y=y, sr=sr), y_axis='mel', fmax=8000, x_axis='time')
+    plt.colorbar(format='%+2.0f dB')
+    #plt.title('Mel spectrogram')
+    plt.tight_layout()
+    plt.savefig("save_models/test/"+mode+"_mel_"+".png")
+    plt.clf()
 
 def draw_mel(mels, mode, title):
     #shape of mels should be [B,D=80, T]
-    mels = F.relu(mels)
+    #mels = F.relu(mels)
     mels = mels.transpose(-1, -2)
 
     for i in range(len(mels)):
-        #mel_i = mels[i]
-        #np.save("save_models/dsvae2/"+mode+"_mel_"+str(i)+".npy", mel_i.cpu().detach().numpy())
-        plt.imshow(mels[i][:,:].transpose(0,1).cpu().detach().numpy())
-        plt.xticks(fontsize=30)
-        plt.yticks(fontsize=30)
-        plt.title(title, fontsize=30)
+        # plt.imshow(mels[i][:,:].transpose(0,1).cpu().detach().numpy())
+        # plt.xticks(fontsize=30)
+        # plt.yticks(fontsize=30)
+        # plt.title(title, fontsize=30)
+        # plt.savefig("save_models/test/"+mode+"_mel_"+str(i)+".png")
+        # plt.clf()
+
+        #plt.figure(figsize=(10, 4))
+        librosa.display.specshow(mels[i][:,:].transpose(0,1).cpu().detach().numpy(), y_axis='mel', fmax=8000, x_axis='time')
+        plt.colorbar(format='%+2.0f dB')
+        plt.title('Mel spectrogram')
+        plt.tight_layout()
         plt.savefig("save_models/test/"+mode+"_mel_"+str(i)+".png")
         plt.clf()
 
@@ -90,7 +118,7 @@ def ema2info(**args):
             emaid2text[ema_id] = text
     text_trans = emaid2text[cur_ema_id]
 
-    return ema_id, wav_data, mel_data, text_trans
+    return ema_id, wav_path, mel_data, text_trans
 
 def get_sparsity(H):
     #shape of H is [B, 1, num_gestures, num_points]
@@ -239,7 +267,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
 
     #plt.plot(data_x_1, data_y_1, label='tongue dorsum')
 
-    indices_new = 3 * np.arange((len(data_x_1) // 3) + 1)
+    indices_new = 3 * np.arange((len(data_x_1) // 4) + 1)
     data_x_1 = data_x_1[indices_new]
     data_x_2 = data_x_2[indices_new]
     data_x_3 = data_x_3[indices_new]
@@ -252,13 +280,14 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     data_y_4 = data_y_4[indices_new]
     data_y_5 = data_y_5[indices_new]
     data_y_6 = data_y_6[indices_new]
+    fig = plt.figure(figsize=(10, 10))
 
-    plt.quiver(data_x_1[:-1], data_y_1[:-1], data_x_1[1:]-data_x_1[:-1], data_y_1[1:]-data_y_1[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='tongue dorsum', color='red')
-    plt.quiver(data_x_2[:-1], data_y_2[:-1], data_x_2[1:]-data_x_2[:-1], data_y_2[1:]-data_y_2[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='tongue blade', color='blue')
-    plt.quiver(data_x_3[:-1], data_y_3[:-1], data_x_3[1:]-data_x_3[:-1], data_y_3[1:]-data_y_3[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='tongue tip', color='black')
-    plt.quiver(data_x_4[:-1], data_y_4[:-1], data_x_4[1:]-data_x_4[:-1], data_y_4[1:]-data_y_4[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='lower incisor', color='orange')
-    plt.quiver(data_x_5[:-1], data_y_5[:-1], data_x_5[1:]-data_x_5[:-1], data_y_5[1:]-data_y_5[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='upper lip', color='purple')
-    plt.quiver(data_x_6[:-1], data_y_6[:-1], data_x_6[1:]-data_x_6[:-1], data_y_6[1:]-data_y_6[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, label='lower lip', color='grey')
+    plt.quiver(data_x_1[:-1], data_y_1[:-1], data_x_1[1:]-data_x_1[:-1], data_y_1[1:]-data_y_1[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue dorsum', color='red')
+    plt.quiver(data_x_2[:-1], data_y_2[:-1], data_x_2[1:]-data_x_2[:-1], data_y_2[1:]-data_y_2[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue blade', color='blue')
+    plt.quiver(data_x_3[:-1], data_y_3[:-1], data_x_3[1:]-data_x_3[:-1], data_y_3[1:]-data_y_3[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue tip', color='black')
+    plt.quiver(data_x_4[:-1], data_y_4[:-1], data_x_4[1:]-data_x_4[:-1], data_y_4[1:]-data_y_4[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='lower incisor', color='orange')
+    plt.quiver(data_x_5[:-1], data_y_5[:-1], data_x_5[1:]-data_x_5[:-1], data_y_5[1:]-data_y_5[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='upper lip', color='purple')
+    plt.quiver(data_x_6[:-1], data_y_6[:-1], data_x_6[1:]-data_x_6[:-1], data_y_6[1:]-data_y_6[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='lower lip', color='grey')
 
     #plt.plot(data_x_2, data_y_2, label='tongue blade')
     #plt.plot(data_x_3, data_y_3, label='tongue tip')
@@ -268,15 +297,16 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     plt.xticks(fontsize=20)
     plt.yticks(fontsize=20)
     plt.legend(prop={'size': 20})
-    plt.title(title,fontdict = {'fontsize' : 40})
+    plt.title(title,fontdict = {'fontsize' : 30})
     plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()
 
 def vis_gestures(model, **args):
     #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
     gestures = model.conv_decoder_weight.unsqueeze(1)
-    ema_id, wav_data, mel_data, text_trans = ema2info(**args)
+    ema_id, wav_path, mel_data, text_trans = ema2info(**args)
     draw_mel(mels=mel_data, mode=ema_id, title=text_trans)
+    #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
         draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
