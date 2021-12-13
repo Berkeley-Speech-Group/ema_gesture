@@ -185,38 +185,6 @@ class AE_CSNMF2(nn.Module):
         #print(self.conv_encoder1.weight.data[0][0])
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
 
-    def _proj_func(self, s,k1,k2):
-        s_shape = s.size()
-        s = s.reshape(-1)
-        N = s.numel()
-        v = s + (k1 - s.sum()) / N
-
-        zero_coef = torch.zeros(N, dtype=torch.bool, device=s.device)
-        while True:
-            m = k1 / (N - zero_coef.count_nonzero())
-            w = torch.where(~zero_coef, v - m, v)
-            a = w @ w
-            b = 2 * w @ v
-            c = v @ v - k2
-            alphap = (-b + (b * b - 4 * a * c).relu().sqrt()) * 0.5 / a
-            #v.add_(w, alpha=alphap.item())
-            v = v + alphap * w
-        
-            mask = v < 0
-            #print("mask$$$$", mask)
-            
-            if not torch.any(mask):
-                break
-    
-            zero_coef |= mask
-            v = F.relu(v)
-            v = v + (k1 - v.sum()) / (N - zero_coef.count_nonzero())
-            v = F.relu(v)
-            #print("##########################v_single", v)
-            break
-            
-        return v.view(s_shape)
-
     def loadParameters(self, path):
         self_state = self.state_dict()
         loaded_state = torch.load(path)
