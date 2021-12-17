@@ -5,6 +5,9 @@ import numpy as np
 import math
 from utils import get_sparsity
 
+import sys
+sys.path.append("src/models/")
+from vq import VQ_VAE
 
 
 class AE_CSNMF(nn.Module):
@@ -140,9 +143,6 @@ class AE_CSNMF2(nn.Module):
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
 
-        #indexes = torch.randperm(kmeans_centers.shape[1])
-        #kmeans_centers = kmeans_centers[:,indexes,:]
-
         self.conv_decoder_weight = nn.Parameter(kmeans_centers)
 
     def forward(self, x):
@@ -184,6 +184,80 @@ class AE_CSNMF2(nn.Module):
         #print(self.conv_decoder_weight.data[0][0])
         #print(self.conv_encoder1.weight.data[0][0])
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
+
+    def loadParameters(self, path):
+        self_state = self.state_dict()
+        loaded_state = torch.load(path)
+        for name, param in loaded_state.items():
+            origname = name
+            if name not in self_state:
+                name = name.replace("module.", "")
+                if name not in self_state:
+                    print("%s is not in the model."%origname)
+                    continue
+            if self_state[name].size() != loaded_state[origname].size():
+                print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
+                continue
+            self_state[name].copy_(param)
+
+
+class AE_CSNMF_VQ(nn.Module):
+    def __init__(self, **args):
+        super().__init__()
+
+        self.win_size = args['win_size']
+        self.t = args['segment_len']
+        self.num_pellets = args['num_pellets']
+        self.num_gestures = args['num_gestures']
+        self.h_conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=15,padding=7) #larger is better
+        self.h_conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
+        self.h_conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.h_conv_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.h_conv_encoder5 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.h_conv_encoder6 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.h_conv_encoder7 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
+        self.sparse_c_base = args['sparse_c_base']
+        self.sparse_t_base = args['sparse_t_base']
+        self.project = args['project']
+
+        self.vq_model = VQ_VAE(**args)
+
+    def forward(self, x):
+        #shape of x is [B,t,A]
+        time_steps = x.shape[1]
+        x = x.transpose(-1, -2) #[B, A, t]
+        H = F.relu(self.h_conv_encoder1(x)) #[B, C, t]
+        H = F.relu(self.h_conv_encoder2(H)) #[B, C, t]
+        #H = F.relu(self.h_conv_encoder3(H)) #[B, C, t]
+        #H = F.relu(self.h_conv_encoder4(H)) #[B, C, t]
+        #H = F.relu(self.h_conv_encoder5(H)) #[B, C, t]
+        #H = F.relu(self.h_conv_encoder6(H)) #[B, C, t]
+        H = F.relu(self.h_conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
+
+        latent_H = H
+        sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
+        #print(sparsity_c.shape) #[B, t]
+        #print(sparsity_t.shape) #[B, C]
+        sparsity_c = sparsity_c.mean() #[B, T] -> [B]
+        sparsity_t = sparsity_t.mean() #[B, D] -> [B]
+
+        #######################
+        ####vqvae and gestures
+        x_transpose = x.transpose(-1,-2) #[B, T, A]
+        x_pad = F.pad(x, pad=(0,0,(self.win_size-1)//2,(self.win_size-1)//2,0,0), mode='constant', value=0) #[B,T+win,A]
+        x_unfold = x_pad.unfold(1, self.win_size,1) #[B, T, A, win]
+        x_unfold_reshape = x_unfold.reshape(x_unfold.shape[0], x_unfold.shape[1], x_unfold.shape[2]*x_unfold.shape[3]) #[B,T,A*win]
+        loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)
+
+        #######################
+        ####decoder
+        #######################
+
+        decoder_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size) #[40, 12, 41]
+        decoder_weight = decoder_weight.permute(1, 0, 2) #[12, 40, 41]
+        inp_hat = F.conv1d(H, decoder_weight.flip(2), padding=20)
+
+        return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq
 
     def loadParameters(self, path):
         self_state = self.state_dict()

@@ -12,7 +12,7 @@ from torchnmf.nmf import NMF2D, NMFD
 from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset
-from models.csnmf import CNMF,AE_CSNMF, AE_CSNMF2, AE_CNMF, NegativeClipper
+from models.csnmf import AE_CSNMF_VQ, AE_CSNMF, AE_CSNMF2
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
@@ -47,17 +47,18 @@ parser.add_argument('--sparse_c_factor',type=float, default=1e-3, help='')
 parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
 parser.add_argument('--entropy_t_factor',type=float, default=1, help='')
 parser.add_argument('--entropy_c_factor',type=float, default=1, help='')
+parser.add_argument('--vq_factor',type=float, default=1, help='')
 parser.add_argument('--sparse_c_base',type=float, default=0.95, help='')
 parser.add_argument('--sparse_t_base',type=float, default=0.95, help='')
 parser.add_argument('--NMFD', action='store_true', help='')
 parser.add_argument('--project', action='store_true', help='')
 parser.add_argument('--with_phoneme', action='store_true', help='')
+parser.add_argument('--vq', action='store_true', help='')
 
 
 args = parser.parse_args()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
-
 
 def eval_model(model, ema_dataloader_test):
     print("###################################################")
@@ -78,7 +79,7 @@ def eval_model(model, ema_dataloader_test):
         sparsity_t_e.append(float(sparsity_t))  
     print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
 
-def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
+def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
 
     ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args['batch_size'], shuffle=True)
     ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args['batch_size'], shuffle=False)
@@ -105,7 +106,10 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             model.train()
             optimizer.zero_grad()
-            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema)
+            if args['vq']:
+                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq = model(ema)
+            else:
+                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema)
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss = args['rec_factor']*rec_loss
 
@@ -121,11 +125,16 @@ def trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_data
             if args['entropy_c']:
                 #loss += -args['sparse_c_factor']*sparsity_c
                 loss += args['entropy_c_factor']*(entropy_c)
+            if args['vq']:
+                loss += args['vq_factor']*loss_vq
 
             loss.backward()
             optimizer.step()
             #model.conv_decoder.apply(clipper)
-            sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c))
+            if args['vq']:
+                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq))
+            else:
+                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c))
             rec_loss_e.append(rec_loss.item())
             sparsity_c_e.append(float(sparsity_c))
             sparsity_t_e.append(float(sparsity_t))
@@ -194,16 +203,12 @@ if __name__ == "__main__":
 
     ema_dataset_train = EMA_Dataset(mode='train', **vars(args))     
     ema_dataset_test = EMA_Dataset(mode='test', **vars(args))    
-    if args.NMFD:
-        V = F.relu(torch.randn(args.batch_size, 12, 500)).to(device)
-        model = NMFD(V.shape, 40, 41).to(device)
-        trainer2(model, ema_dataset_train, ema_dataset_test,  **vars(args))
-        exit()
+
+    if args.vq:
+        model = AE_CSNMF_VQ(**vars(args)).to(device)
     else: 
         model = AE_CSNMF2(**vars(args)).to(device)
     
-
-    clipper = NegativeClipper()
 
     if not os.path.exists(args.model_path):
         print("Model not exist and we just create the new model......")
@@ -237,6 +242,6 @@ if __name__ == "__main__":
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=args.step_size, gamma=args.lr_decay_rate)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=4, threshold=0.0001)
-    trainer(model, clipper, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
+    trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
 
 
