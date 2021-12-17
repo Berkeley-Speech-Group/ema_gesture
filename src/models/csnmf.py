@@ -144,6 +144,7 @@ class AE_CSNMF2(nn.Module):
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
 
         self.conv_decoder_weight = nn.Parameter(kmeans_centers)
+        self.gesture_weight = self.conv_decoder_weight
 
     def forward(self, x):
         #shape of x is [B,t,A]
@@ -180,7 +181,7 @@ class AE_CSNMF2(nn.Module):
         #print(sparsity_t.shape) #[B, C]
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
-        inp_hat = F.conv1d(H, self.conv_decoder_weight.flip(2), padding=20)
+        inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
         #print(self.conv_decoder_weight.data[0][0])
         #print(self.conv_encoder1.weight.data[0][0])
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
@@ -221,6 +222,8 @@ class AE_CSNMF_VQ(nn.Module):
         self.project = args['project']
 
         self.vq_model = VQ_VAE(**args)
+        self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size) #[40, 12, 41]
+        self.gesture_weight = self.gesture_weight.permute(1, 0, 2) #[12, 40, 41]
 
     def forward(self, x):
         #shape of x is [B,t,A]
@@ -253,9 +256,7 @@ class AE_CSNMF_VQ(nn.Module):
         ####decoder
         #######################
 
-        decoder_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size) #[40, 12, 41]
-        decoder_weight = decoder_weight.permute(1, 0, 2) #[12, 40, 41]
-        inp_hat = F.conv1d(H, decoder_weight.flip(2), padding=20)
+        inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
 
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq
 
