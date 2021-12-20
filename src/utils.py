@@ -150,7 +150,10 @@ def get_sparsity(H):
 def vis_H(model, **args):
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    ema_ori, ema_hat, latent_H, _, _,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    if args['vq']:
+        ema_ori, ema_hat, latent_H, _, _,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    else:
+        ema_ori, ema_hat, latent_H, _, _,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
     #print(latent_H.shape) #[1,1,num_gestures, t]
 
     latent_H = latent_H.squeeze().squeeze().detach().numpy() #[num_gesturs, t]
@@ -188,8 +191,11 @@ def vis_kinematics(model, **args):
 
     ######################################
     ############Reconstruction
-    #####################################
-    ema_ori, ema_hat,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ######################################
+    if not args['vq']:
+        ema_ori, ema_hat,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    else:
+        ema_ori, ema_hat,_,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device)) 
     ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
 
     draw_kinematics(ema_data, ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 

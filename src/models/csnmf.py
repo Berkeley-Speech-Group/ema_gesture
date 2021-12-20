@@ -71,8 +71,6 @@ class AE_CSNMF(nn.Module):
         # print(H.shape)
 
         sparsity_c, sparsity_t = get_sparsity(H)
-        # sparsity_c = torch.norm(H, p=1, dim=2)
-        # sparsity_t = torch.norm(H, p=1, dim=3)
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         H = H[:,:,:,:time_steps] #The segment length should be the same as input sequence during testing
@@ -157,33 +155,12 @@ class AE_CSNMF2(nn.Module):
         #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
         H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
-        #H = H / torch.norm(H, p=2, dim=1, keepdim=True) #For L2 norm to be one
-
-        if self.project:
-            H_list1 = []
-            for b in range(H.shape[0]):
-                H_list2 = []
-                for t in range(H.shape[2]):
-                    col_vec = H[b,:,t]
-                    vec_len = H.shape[1]
-                    k2 = torch.norm(col_vec, p=2, dim=-1)
-                    k1 = (math.sqrt(vec_len) - 0.9 * (math.sqrt(vec_len) - 1)) * k2
-                    #k1 = vec_len ** 0.5 * (1 - 0.8) + 0.8
-                    col_vec = self._proj_func(col_vec, k1, 1.0) 
-                    H_list2.append(col_vec)
-                H_list1.append(torch.stack(H_list2, dim=0))
-            H = torch.stack(H_list1, dim=0) #[B, T, C]
-            H = H.permute(0, 2, 1) #[B, C, T]
 
         latent_H = H
         sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
-        #print(sparsity_c.shape) #[B, t]
-        #print(sparsity_t.shape) #[B, C]
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
-        #print(self.conv_decoder_weight.data[0][0])
-        #print(self.conv_encoder1.weight.data[0][0])
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
 
     def loadParameters(self, path):
@@ -256,7 +233,7 @@ class AE_CSNMF_VQ(nn.Module):
         ####decoder
         #######################
 
-        inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
+        inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=(self.win_size-1)//2)
 
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq
 

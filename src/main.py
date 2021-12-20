@@ -60,24 +60,34 @@ args = parser.parse_args()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
-def eval_model(model, ema_dataloader_test):
+def eval_model(model, ema_dataloader_test, **args):
     print("###################################################")
     print("###########Start EValuating########################")
     print("###################################################")
     rec_loss_e = []
     sparsity_c_e = []
     sparsity_t_e = []
+    loss_vq_e = []
     for i, ema in enumerate(ema_dataloader_test):
         #ema.shape #[batch_size,segment_len,num_pellets]
         ema = ema.to(device)
         model.eval()
         optimizer.zero_grad()
-        inp, inp_hat, _, sparsity_c, sparsity_t, entropy_t,_ = model(ema)
+        if args['vq']:
+            inp, inp_hat, _, sparsity_c, sparsity_t, entropy_t,_,loss_vq = model(ema)
+        else:
+            inp, inp_hat, _, sparsity_c, sparsity_t, entropy_t,_ = model(ema)
         rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
         rec_loss_e.append(rec_loss.item())
         sparsity_c_e.append(float(sparsity_c))  
         sparsity_t_e.append(float(sparsity_t))  
-    print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
+         
+        if args['vq']:
+            loss_vq_e.append(float(loss_vq)) 
+    if args['vq']:
+        print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f, Loss_vq is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e), sum(loss_vq_e)/len(loss_vq_e)))
+    else:
+        print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
 
 def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
 
@@ -149,7 +159,7 @@ def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,
         lr_scheduler.step(rec_loss.item())
         if (e+1) % args['eval_epoch'] == 0:
             ####start evaluation
-            eval_model(model, ema_dataloader_test)
+            eval_model(model, ema_dataloader_test, **args)
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs
@@ -230,9 +240,8 @@ if __name__ == "__main__":
         else:
             model.loadParameters(args.model_path)
 
-    if args.vis_kinematics:
-        vis_kinematics(model, **vars(args))
     if args.vis_gestures:
+        vis_kinematics(model, **vars(args))
         vis_H(model, **vars(args))
         vis_gestures(model, **vars(args))
         exit()

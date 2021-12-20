@@ -2,10 +2,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 
 class VQ_VAE(nn.Module):
-    def __init__(self, commitment_cost=0.25, **args):
+    def __init__(self, commitment_cost=1.25, **args):
         super().__init__()
         
         num_embeddings = args['num_gestures']
@@ -13,9 +14,9 @@ class VQ_VAE(nn.Module):
         self._embedding_dim = embedding_dim
         self._num_embeddings = num_embeddings
         self._embedding = nn.Embedding(self._num_embeddings, self._embedding_dim)
-        self._embedding.weight.data.uniform_(-1/self._num_embeddings, 1/self._num_embeddings)
-#         if args['zt_norm_mean']:
-#             self._embedding.weight.data = self._embedding.weight.data / torch.linalg.norm(self._embedding.weight.data, dim=-1, ord=2, keepdim=True)
+        kmeans_centers = torch.from_numpy(np.load('kmeans_centers_40.npy')) #[40, 12*41=492]
+        self._embedding.weight.data = kmeans_centers
+        #self._embedding.weight.data.uniform_(-1/self._num_embeddings, 1/self._num_embeddings)
         self._commitment_cost = commitment_cost
 
     def forward(self, inputs):
@@ -44,11 +45,6 @@ class VQ_VAE(nn.Module):
         e_latent_loss = F.mse_loss(quantized.detach(), inputs)
         q_latent_loss = F.mse_loss(quantized, inputs.detach())
         loss_vq = q_latent_loss + self._commitment_cost * e_latent_loss
+
         
-        quantized = inputs + (quantized - inputs).detach()
-        avg_probs = torch.mean(encodings, dim=0)
-        perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
-        
-        encoding_indices = encoding_indices.reshape(batch_size, -1)
-        
-        return loss_vq, quantized.contiguous(), encoding_indices
+        return loss_vq, None, None
