@@ -12,7 +12,7 @@ from torchnmf.nmf import NMF2D, NMFD
 from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset
-from models.csnmf import AE_CSNMF_VQ, AE_CSNMF, AE_CSNMF2
+from models.csnmf import AE_CSNMF_VQ, AE_CSNMF_VQ_only,AE_CSNMF, AE_CSNMF2
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
@@ -27,7 +27,7 @@ parser.add_argument('--win_size', type=int, default=41, help='')
 parser.add_argument('--segment_len', type=int, default=100, help='')
 parser.add_argument('--num_epochs', type=int, default=500, help='')
 parser.add_argument('--learning_rate', type=float, default=1e-2, help='')
-parser.add_argument('--weight_decay', type=float, default=5e-5, help='')
+parser.add_argument('--weight_decay', type=float, default=0, help='')
 parser.add_argument('--model_path', type=str, default='', help='')
 parser.add_argument('--save_path', type=str, default='save_models/test', help='')
 parser.add_argument('--test_ema_path', type=str, default='', help='')
@@ -53,7 +53,9 @@ parser.add_argument('--sparse_t_base',type=float, default=0.95, help='')
 parser.add_argument('--NMFD', action='store_true', help='')
 parser.add_argument('--project', action='store_true', help='')
 parser.add_argument('--with_phoneme', action='store_true', help='')
+parser.add_argument('--fixed_length', action='store_true', help='')
 parser.add_argument('--vq', action='store_true', help='')
+parser.add_argument('--vq_only', action='store_true', help='to test the clustering performance')
 
 
 args = parser.parse_args()
@@ -175,7 +177,7 @@ def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,
         f.write("batch_size is {} \n".format(args['batch_size']))
         #f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
 
-def trainer2(model, ema_dataset_train, ema_dataset_test, **args):
+def trainer_vq_only(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
 
     ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args['batch_size'], shuffle=True)
     ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args['batch_size'], shuffle=False)
@@ -191,18 +193,34 @@ def trainer2(model, ema_dataset_train, ema_dataset_test, **args):
 
     writer = SummaryWriter()
     count = 0
+    for e in range(args['num_epochs']):
+        loss_vq_e = []
+        for i, ema in enumerate(ema_dataloader_train):
+            #ema.shape #[batch_size,segment_len,num_pellets]
+            ema = ema.to(device)
+            training_size = len(ema_dataset_train)
+            sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
+            model.train()
+            optimizer.zero_grad()
+            loss = model(ema)
+            loss_vq_e.append(loss.item())
+            #loss.backward()
+            #optimizer.step()
+            sys.stdout.write("loss_vq=%.4f " %(loss.item()))
+            count += 1
+        lr_scheduler.step(loss.item())
+        #if (e+1) % args['eval_epoch'] == 0:
+        #    eval_model(model, ema_dataloader_test, **args)
+        print("|Epoch: %d loss_vq is %.4f" %(e, sum(loss_vq_e)/len(loss_vq_e)))
 
-    rec_loss_e = []
+        torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
+        #save the model every 10 epochs
+        if (e + 1) % 10 == 0:
+            torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
 
-    for i, ema in enumerate(ema_dataloader_train):
-        #ema.shape #[batch_size,segment_len,num_pellets]
-        ema = ema.to(device)
-        ema = ema.transpose(1,2)
-        model.fit(ema)
-        rec = model()
-        rec_loss = kl_div(rec, ema)
-        loss = rec_loss
-        break
+        #write into log after each epoch
+        f.write("***************************************************************************")
+        f.write("epoch: %d \n" %(e))
 
 
 if __name__ == "__main__":
@@ -216,6 +234,8 @@ if __name__ == "__main__":
 
     if args.vq:
         model = AE_CSNMF_VQ(**vars(args)).to(device)
+    elif args.vq_only:
+        model = AE_CSNMF_VQ_only(**vars(args)).to(device) 
     else: 
         model = AE_CSNMF2(**vars(args)).to(device)
     
@@ -241,8 +261,8 @@ if __name__ == "__main__":
             model.loadParameters(args.model_path)
 
     if args.vis_gestures:
-        vis_kinematics(model, **vars(args))
-        vis_H(model, **vars(args))
+        #vis_kinematics(model, **vars(args))
+        #vis_H(model, **vars(args))
         vis_gestures(model, **vars(args))
         exit()
 
@@ -251,6 +271,10 @@ if __name__ == "__main__":
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=args.step_size, gamma=args.lr_decay_rate)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=4, threshold=0.0001)
-    trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
+
+    if args.vq_only:
+        trainer_vq_only(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
+    else:
+        trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
 
 

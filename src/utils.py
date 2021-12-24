@@ -273,7 +273,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
 
     #plt.plot(data_x_1, data_y_1, label='tongue dorsum')
 
-    indices_new = 3 * np.arange((len(data_x_1) // 4) + 1)
+    indices_new = 2 * np.arange((len(data_x_1) // 2) + 1)
     data_x_1 = data_x_1[indices_new]
     data_x_2 = data_x_2[indices_new]
     data_x_3 = data_x_3[indices_new]

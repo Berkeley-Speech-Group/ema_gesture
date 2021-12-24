@@ -13,8 +13,8 @@ def loadWAV(filename, max_points=32000):
     #if waveform.shape[1] <= max_points:
     #    waveform = F.pad(waveform, (0, max_points-waveform.shape[1],0,0), mode='constant', value=0)
     #shape of audio is [1, xxxxx]    
-    
     return waveform
+
 
 class EMA_Dataset:
     
@@ -30,6 +30,7 @@ class EMA_Dataset:
         self.eval = args['vis_kinematics'] or args['vis_gestures']
         self.spk_id_setting = args['spk_id']
         self.mode = mode
+        self.fixed_length = args['fixed_length']
         
         for spk_id in os.listdir(path):
             if not spk_id.startswith('cin'):
@@ -41,22 +42,29 @@ class EMA_Dataset:
             ema_dir = os.path.join(spk_id_path, "nema")
             wav_dir = os.path.join(spk_id_path, "wav")
            
+            utter_id_set = set()
             for ema in os.listdir(ema_dir):
                 if ema.endswith('.ema'):
                     ema_path = os.path.join(ema_dir, ema)
                     self.ema_paths.append(ema_path)
+                    utter_id = ema_path.split("/")[-1].split('.')[0]
+                    utter_id_set.add(utter_id)
                 if ema.endswith('.npy'):
                     ema_npy_path = os.path.join(ema_dir, ema)
                     self.ema_npy_paths.append(ema_npy_path)
+
                 
             for wav in os.listdir(wav_dir):
                 if not wav.endswith('.wav'):
                     continue
                 wav_path = os.path.join(wav_dir, wav)
+                wav_id = wav_path.split("/")[-1].split(".")[0]
+                if wav_id not in utter_id_set:  #To make sure that redundant wavs are not included
+                    continue
                 self.wav_paths.append(wav_path)
-        #print(len(self.ema_npy_paths)) #4409
-        #print(len(self.ema_paths)) #4409
-        #print(len(self.wav_paths)) #4579
+        print("# of npys is ", len(self.ema_npy_paths)) #4409
+        print("# of emas is ", len(self.ema_paths)) #4409
+        print("# of wavs is ", len(self.wav_paths)) #4579
 
         random.shuffle(self.ema_npy_paths)
         train_size = int(0.8 * len(self.ema_npy_paths))
@@ -94,6 +102,7 @@ class EMA_Dataset:
             else:
                 ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
         return ema_data
+
 
     
 

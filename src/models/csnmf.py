@@ -111,23 +111,6 @@ class AE_CSNMF2(nn.Module):
         self.conv_encoder7 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
         self.sparse_c_base = args['sparse_c_base']
         self.sparse_t_base = args['sparse_t_base']
-        self.project = args['project']
-
-        # torch.nn.init.kaiming_uniform(self.conv_encoder1.weight)
-        # torch.nn.init.kaiming_uniform(self.conv_encoder2.weight)
-        # torch.nn.init.xavier_uniform(self.conv_encoder3.weight)
-        # torch.nn.init.xavier_uniform(self.conv_encoder4.weight)
-        # torch.nn.init.xavier_uniform(self.conv_encoder5.weight)
-        # torch.nn.init.xavier_uniform(self.conv_encoder6.weight)
-        # torch.nn.init.kaiming_uniform(self.conv_encoder7.weight)
-
-        # self.conv_encoder1.weight.data.fill_(0.01)
-        # self.conv_encoder2.weight.data.fill_(0.01)
-        # self.conv_encoder3.weight.data.fill_(0.01)
-        # self.conv_encoder4.weight.data.fill_(0.01)
-        # self.conv_encoder5.weight.data.fill_(0.01)
-        # self.conv_encoder6.weight.data.fill_(0.01)
-        # self.conv_encoder7.weight.data.fill_(0.01)
 
         ######Apply weights of k-means to gestures
         if self.num_gestures == 20:
@@ -161,6 +144,7 @@ class AE_CSNMF2(nn.Module):
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
+        #print(self.conv_decoder_weight)
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
 
     def loadParameters(self, path):
@@ -234,8 +218,52 @@ class AE_CSNMF_VQ(nn.Module):
         #######################
 
         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=(self.win_size-1)//2)
+        #print(self.vq_model._embedding.weight)
 
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq
+
+    def loadParameters(self, path):
+        self_state = self.state_dict()
+        loaded_state = torch.load(path)
+        for name, param in loaded_state.items():
+            origname = name
+            if name not in self_state:
+                name = name.replace("module.", "")
+                if name not in self_state:
+                    print("%s is not in the model."%origname)
+                    continue
+            if self_state[name].size() != loaded_state[origname].size():
+                print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
+                continue
+            self_state[name].copy_(param)
+
+class AE_CSNMF_VQ_only(nn.Module):
+    def __init__(self, **args):
+        super().__init__()
+
+        self.win_size = args['win_size']
+        self.t = args['segment_len']
+        self.num_pellets = args['num_pellets']
+        self.num_gestures = args['num_gestures']
+
+        self.vq_model = VQ_VAE(ema=True, **args)
+        self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size) #[40, 12, 41]
+        self.gesture_weight = self.gesture_weight.permute(1, 0, 2) #[12, 40, 41]
+
+    def forward(self, x):
+        #shape of x is [B,t,A]
+        time_steps = x.shape[1]
+        x = x.transpose(-1, -2) #[B, A, t]
+
+        #######################
+        ####vqvae and gestures
+        x_transpose = x.transpose(-1,-2) #[B, T, A]
+        x_pad = F.pad(x, pad=(0,0,(self.win_size-1)//2,(self.win_size-1)//2,0,0), mode='constant', value=0) #[B,T+win,A]
+        x_unfold = x_pad.unfold(1, self.win_size,1) #[B, T, A, win]
+        x_unfold_reshape = x_unfold.reshape(x_unfold.shape[0], x_unfold.shape[1], x_unfold.shape[2]*x_unfold.shape[3]) #[B,T,A*win]
+        loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)
+        #print(self.vq_model._embedding.weight)
+        return loss_vq
 
     def loadParameters(self, path):
         self_state = self.state_dict()
