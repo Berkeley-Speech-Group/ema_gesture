@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import numpy as np
 import math
 from utils import get_sparsity
@@ -279,5 +280,60 @@ class AE_CSNMF_VQ_only(nn.Module):
                 print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
                 continue
             self_state[name].copy_(param)
+
+
+class PR_Model(nn.Module):
+    def __init__(self, **args):
+        super().__init__()
+        self.pr_mel = args['pr_mel']
+        self.pr_ema = args['pr_ema']
+        self.pr_mel = args['pr_mel']
+        self.num_phns = args['num_phns']
+        
+        if self.pr_mel:
+            self.in_channels = 80
+        elif self.pr_ema:
+            self.in_channels = 12
+
+        self.hidden_size = 256
+        self.cnn_encoder1 = nn.Conv1d(in_channels=self.in_channels,out_channels=self.hidden_size // 2,kernel_size=3, padding=1, stride=1, bias=True)
+        self.bn1 = nn.BatchNorm1d(self.hidden_size // 2)
+        self.elu1 = nn.ELU()
+        self.cnn_encoder2 = nn.Conv1d(in_channels=self.hidden_size // 2,out_channels=self.hidden_size,kernel_size=3, padding=1, stride=1, bias=True)
+        self.bn2 = nn.BatchNorm1d(self.hidden_size)
+        self.elu2 = nn.ELU()        
+
+        self.lstm_encoder = nn.LSTM(
+            input_size=self.hidden_size, #256
+            hidden_size=self.hidden_size,
+            num_layers=2,
+            bidirectional=True,
+            dropout=0.1
+        )
+
+        self.linear_encoder = nn.Linear(2*self.hidden_size, self.num_phns)
+
+    def forward(self, inp_utter, inp_utter_len):
+
+        #inp_utter: [B, T, D]
+        x = self.cnn_encoder1(inp_utter.permute(0,2,1))  #[B, D, T]
+        x = self.bn1(x)
+        x = self.elu1(x)
+        x = self.cnn_encoder2(x)
+        x = self.bn2(x)
+        x = self.elu2(x)
+        x = x.permute(2,0,1) #[B, T, D]
+        
+        #lstm
+        packed_x = pack_padded_sequence(x, inp_utter_len, enforce_sorted=False) #X: [max_utterance, batch_size, frame_size]
+        packed_out = self.lstm_encoder(packed_x)[0]
+        out, out_lens = pad_packed_sequence(packed_out) # out: [max_utterance, batch_size, frame_size]
+        
+        # Log softmax after output layer is required since`nn.CTCLoss` expects log probabilities.
+        #out = self.transformer(out)
+        p_out = self.linear_encoder(out).softmax(2)
+        log_p_out = self.linear_encoder(out).log_softmax(2)
+
+        return log_p_out, p_out, out_lens
 
     
