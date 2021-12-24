@@ -113,6 +113,7 @@ def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,
 
             print("ema", ema.shape)
             print("ema_len", ema_len_batch.shape)
+            print("ema_len", ema_len_batch)
             print("mel", mel_batch.shape)
             print("mel_len", mel_len_batch.shape)
             print("label", lab_batch.shape)

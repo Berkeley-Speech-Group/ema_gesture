@@ -147,30 +147,29 @@ def collate(batch):
     )
     max_ema_len = torch.max(ema_len_batch)
 
-    ema_batch = torch.FloatTensor( #[B, max_ema_T, 12]
-        [
-            np.concatenate(
-                (ema, np.zeros((max_ema_len - len(ema), 12))),
-                axis=0
+    ema_batch = torch.stack( #[B, max_ema_T, 12]
+        ([
+            torch.cat(
+                (ema, torch.zeros((max_ema_len - len(ema), 12))),
+                dim=0
             ) if len(ema) < max_ema_len else ema
             for ema in ema_batch
-        ]
+        ]), dim=0
     )
 
     mel_len_batch = torch.LongTensor(
         [len(mel) for mel in mel_batch]
     )
 
-
     max_mel_len = torch.max(mel_len_batch)
-    mel_batch = torch.FloatTensor( #[B, max_mel_T, 80]
-        [
-            np.concatenate(
-                (mel, np.zeros((max_mel_len - len(mel), 80))),
-                axis=0
+    mel_batch = torch.stack( #[B, max_mel_T, 80]
+        ([
+            torch.cat(
+                (mel, torch.zeros((max_mel_len - len(mel), 80))),
+                dim=0
             ) if len(mel) < max_mel_len else mel
             for mel in mel_batch
-        ]
+        ]), dim=0
     )
 
     lab_len_batch = torch.LongTensor(
@@ -179,14 +178,14 @@ def collate(batch):
 
     max_label_len = torch.max(lab_len_batch)
 
-    lab_batch = torch.LongTensor( #[B, max_lab_len]
-        [
-            np.concatenate(
-                (label, np.zeros(max_label_len - len(label))), axis =0
+    lab_batch = torch.stack( #[B, max_lab_len]
+        ([
+            torch.cat(
+                (label, torch.zeros(max_label_len - len(label))), dim =0
                 )if len(label) < max_label_len else label
             for label in lab_batch
-        ]
-    )
+        ]), dim=0
+    ).long()
 
     return (
         ema_batch,
