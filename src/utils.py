@@ -44,7 +44,7 @@ def pySTFT(x, fft_length=1024, hop_length=256):
 def wav2mel(wav):
     #input size of wav should be [1, length]
     sr = 16000
-    mel_basis = mel(sr, 1024, fmin=10, fmax=8000, n_mels=60).T
+    mel_basis = mel(sr, 1024, fmin=10, fmax=8000, n_mels=80).T
     min_level = np.exp(-100 / 20 * np.log(10))
     b, a = butter_highpass(3, sr, order=5)
     wav = signal.filtfilt(b, a, wav.reshape(-1).numpy())

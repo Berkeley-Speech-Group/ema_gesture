@@ -5,16 +5,16 @@ import numpy as np
 import random
 import os
 import sys
+from utils import wav2mel
+
 
 def loadWAV(filename, max_points=32000):
     waveform, sr = torchaudio.load(filename) #sr=16000
-
     #max_audio = max_frames * hop_size + win_length - hop_size
     #if waveform.shape[1] <= max_points:
     #    waveform = F.pad(waveform, (0, max_points-waveform.shape[1],0,0), mode='constant', value=0)
     #shape of audio is [1, xxxxx]    
     return waveform
-
 
 class EMA_Dataset:
     
@@ -33,7 +33,6 @@ class EMA_Dataset:
         self.spk_id_setting = args['spk_id']
         self.mode = mode
         self.fixed_length = args['fixed_length']
-
 
         print("Extract wav, nema, npy info................................../......................")
         
@@ -108,9 +107,11 @@ class EMA_Dataset:
 
     def __len__(self): #4579
         return len(self.ema_npy_paths)
+
     def __getitem__(self, index):
-        #wav_path = self.wav_paths[index]
-        #waveform = loadWAV(wav_path) #shape is [1, num_points]
+        wav_path = self.wav_paths[index]
+        wav_data = loadWAV(wav_path) #[1, num_points]
+        mel_data = wav2mel(wav_data) #[T_mel, 80]
         ema_npy_path = self.ema_npy_paths[index]
         lab_npy_path = self.lab_npy_paths[index]
         ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema_real, 12]
@@ -123,12 +124,78 @@ class EMA_Dataset:
         ####################################
 
         if not self.eval:
-            if ema_data.shape[0] >= self.segment_len:
-                start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
-                ema_data = ema_data[start_point:start_point+self.segment_len]
-            else:
-                ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
-        return ema_data
+            if self.fixed_length:
+                if ema_data.shape[0] >= self.segment_len:
+                    start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
+                    ema_data = ema_data[start_point:start_point+self.segment_len]
+                else:
+                    ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
+
+        return ema_data, wav_data, mel_data, lab_data_unique
+
+
+def collate(batch):
+
+    ema_batch, wav_batch, mel_batch, lab_batch = zip(*batch)
+
+    #ema_batch [B, T_ema(variable), 12], actually it is list
+    #wav_batch, [B, 1, num_points(variable)], actually it is list
+    #mel_batch, [B, T_mel(variable), 80], actually it is 
+
+    ema_len_batch = torch.LongTensor(
+        [len(ema) for ema in ema_batch]
+    )
+    max_ema_len = torch.max(ema_len_batch)
+
+    ema_batch = torch.FloatTensor( #[B, max_ema_T, 12]
+        [
+            np.concatenate(
+                (ema, np.zeros((max_ema_len - len(ema), 12))),
+                axis=0
+            ) if len(ema) < max_ema_len else ema
+            for ema in ema_batch
+        ]
+    )
+
+    mel_len_batch = torch.LongTensor(
+        [len(mel) for mel in mel_batch]
+    )
+
+
+    max_mel_len = torch.max(mel_len_batch)
+    mel_batch = torch.FloatTensor( #[B, max_mel_T, 80]
+        [
+            np.concatenate(
+                (mel, np.zeros((max_mel_len - len(mel), 80))),
+                axis=0
+            ) if len(mel) < max_mel_len else mel
+            for mel in mel_batch
+        ]
+    )
+
+    lab_len_batch = torch.LongTensor(
+        [len(lab_seq) for lab_seq in lab_batch]
+    )
+
+    max_label_len = torch.max(lab_len_batch)
+
+    lab_batch = torch.LongTensor( #[B, max_lab_len]
+        [
+            np.concatenate(
+                (label, np.zeros(max_label_len - len(label))), axis =0
+                )if len(label) < max_label_len else label
+            for label in lab_batch
+        ]
+    )
+
+    return (
+        ema_batch,
+        mel_batch, 
+        ema_len_batch,
+        mel_len_batch, 
+        lab_batch,
+        lab_len_batch
+    )
 
 
     

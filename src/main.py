@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchnmf.nmf import NMF2D, NMFD
 from torchnmf.metrics import kl_div
 
-from dataloader import EMA_Dataset
+from dataloader import EMA_Dataset, collate
 from models.csnmf import AE_CSNMF_VQ, AE_CSNMF_VQ_only,AE_CSNMF, AE_CSNMF2
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
@@ -93,8 +93,6 @@ def eval_model(model, ema_dataloader_test, **args):
 
 def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
 
-    ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args['batch_size'], shuffle=True)
-    ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args['batch_size'], shuffle=False)
 
     #Write into logs
     if not os.path.exists(args['save_path']):
@@ -111,71 +109,78 @@ def trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,
         rec_loss_e = []
         sparsity_c_e = []
         sparsity_t_e = []
-        for i, ema in enumerate(ema_dataloader_train):
-            #ema.shape #[batch_size,segment_len,num_pellets]
-            ema = ema.to(device)
-            training_size = len(ema_dataset_train)
-            sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
-            model.train()
-            optimizer.zero_grad()
-            if args['vq']:
-                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq = model(ema)
-            else:
-                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema)
-            rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
-            loss = args['rec_factor']*rec_loss
+        for i, (ema, mel_batch, ema_len_batch, mel_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
 
-            if args['sparse_c']:
-                #loss += -args['sparse_c_factor']*sparsity_c
-                loss += args['sparse_c_factor']*(sparsity_c-args['sparse_c_base'])**2
-            if args['sparse_t']:
-                #loss += -args['sparse_t_factor']*sparsity_t
-                loss += args['sparse_t_factor']*(sparsity_t-args['sparse_t_base'])**2
-            if args['entropy_t']:
-                #loss += -args['sparse_c_factor']*sparsity_c
-                loss += args['entropy_t_factor']*(entropy_t)
-            if args['entropy_c']:
-                #loss += -args['sparse_c_factor']*sparsity_c
-                loss += args['entropy_c_factor']*(entropy_c)
-            if args['vq']:
-                loss += args['vq_factor']*loss_vq
+            print("ema", ema.shape)
+            print("ema_len", ema_len_batch.shape)
+            print("mel", mel_batch.shape)
+            print("mel_len", mel_len_batch.shape)
+            print("label", lab_batch.shape)
+            print("label_len", lab_len_batch.shape)
 
-            loss.backward()
-            optimizer.step()
-            #model.conv_decoder.apply(clipper)
-            if args['vq']:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq))
-            else:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c))
-            rec_loss_e.append(rec_loss.item())
-            sparsity_c_e.append(float(sparsity_c))
-            sparsity_t_e.append(float(sparsity_t))
-            writer.add_scalar('Rec_Loss_train', rec_loss.item(), count)
-            writer.add_scalar('Sparsity_H_c_train', sparsity_c, count)
-            writer.add_scalar('Sparsity_H_t_train', sparsity_t, count)
-            count += 1
-        print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
+        #     ema = ema.to(device)
+        #     training_size = len(ema_dataset_train)
+        #     sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
+        #     model.train()
+        #     optimizer.zero_grad()
+        #     if args['vq']:
+        #         inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq = model(ema)
+        #     else:
+        #         inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema)
+        #     rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
+        #     loss = args['rec_factor']*rec_loss
+
+        #     if args['sparse_c']:
+        #         #loss += -args['sparse_c_factor']*sparsity_c
+        #         loss += args['sparse_c_factor']*(sparsity_c-args['sparse_c_base'])**2
+        #     if args['sparse_t']:
+        #         #loss += -args['sparse_t_factor']*sparsity_t
+        #         loss += args['sparse_t_factor']*(sparsity_t-args['sparse_t_base'])**2
+        #     if args['entropy_t']:
+        #         #loss += -args['sparse_c_factor']*sparsity_c
+        #         loss += args['entropy_t_factor']*(entropy_t)
+        #     if args['entropy_c']:
+        #         #loss += -args['sparse_c_factor']*sparsity_c
+        #         loss += args['entropy_c_factor']*(entropy_c)
+        #     if args['vq']:
+        #         loss += args['vq_factor']*loss_vq
+
+        #     loss.backward()
+        #     optimizer.step()
+        #     #model.conv_decoder.apply(clipper)
+        #     if args['vq']:
+        #         sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq))
+        #     else:
+        #         sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c))
+        #     rec_loss_e.append(rec_loss.item())
+        #     sparsity_c_e.append(float(sparsity_c))
+        #     sparsity_t_e.append(float(sparsity_t))
+        #     writer.add_scalar('Rec_Loss_train', rec_loss.item(), count)
+        #     writer.add_scalar('Sparsity_H_c_train', sparsity_c, count)
+        #     writer.add_scalar('Sparsity_H_t_train', sparsity_t, count)
+        #     count += 1
+        # print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
         
-        #if (e+1) % args['step_size'] == 0:
-        #    lr_scheduler.step()
-        lr_scheduler.step(rec_loss.item())
-        if (e+1) % args['eval_epoch'] == 0:
-            ####start evaluation
-            eval_model(model, ema_dataloader_test, **args)
+        # #if (e+1) % args['step_size'] == 0:
+        # #    lr_scheduler.step()
+        # lr_scheduler.step(rec_loss.item())
+        # if (e+1) % args['eval_epoch'] == 0:
+        #     ####start evaluation
+        #     eval_model(model, ema_dataloader_test, **args)
 
-        torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
-        #save the model every 10 epochs
-        if (e + 1) % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
+        # torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
+        # #save the model every 10 epochs
+        # if (e + 1) % 10 == 0:
+        #     torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
 
-        #write into log after each epoch
-        f.write("***************************************************************************")
-        f.write("epoch: %d \n" %(e))
-        f.write("Ave loss is %.4f\n" %(sum(rec_loss_e)/len(rec_loss_e)))
-        f.write("Sparsity_c is %.4f\n"%(sum(sparsity_c_e)/len(sparsity_c_e)))
-        f.write("Sparsity_t is %.4f\n"%(sum(sparsity_t_e)/len(sparsity_t_e)))
-        f.write("batch_size is {} \n".format(args['batch_size']))
-        #f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
+        # #write into log after each epoch
+        # f.write("***************************************************************************")
+        # f.write("epoch: %d \n" %(e))
+        # f.write("Ave loss is %.4f\n" %(sum(rec_loss_e)/len(rec_loss_e)))
+        # f.write("Sparsity_c is %.4f\n"%(sum(sparsity_c_e)/len(sparsity_c_e)))
+        # f.write("Sparsity_t is %.4f\n"%(sum(sparsity_t_e)/len(sparsity_t_e)))
+        # f.write("batch_size is {} \n".format(args['batch_size']))
+        # #f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
 
 def trainer_vq_only(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test, **args):
 
@@ -231,6 +236,12 @@ if __name__ == "__main__":
 
     ema_dataset_train = EMA_Dataset(mode='train', **vars(args))     
     ema_dataset_test = EMA_Dataset(mode='test', **vars(args))    
+    if args.fixed_length:
+        ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True)
+        ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False)
+    else:
+        ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
+        ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)    
 
     if args.vq:
         model = AE_CSNMF_VQ(**vars(args)).to(device)
@@ -275,6 +286,6 @@ if __name__ == "__main__":
     if args.vq_only:
         trainer_vq_only(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
     else:
-        trainer(model, optimizer, lr_scheduler, ema_dataset_train, ema_dataset_test,  **vars(args))
+        trainer(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test,  **vars(args))
 
 
