@@ -26,11 +26,16 @@ class EMA_Dataset:
         self.segment_len = args['segment_len']
         self.wav_paths = []
         self.ema_paths = []
+        self.lab_paths = []
         self.ema_npy_paths = []
+        self.lab_npy_paths = []
         self.eval = args['vis_kinematics'] or args['vis_gestures']
         self.spk_id_setting = args['spk_id']
         self.mode = mode
         self.fixed_length = args['fixed_length']
+
+
+        print("Extract wav, nema, npy info................................../......................")
         
         for spk_id in os.listdir(path):
             if not spk_id.startswith('cin'):
@@ -41,6 +46,7 @@ class EMA_Dataset:
             spk_id_path = os.path.join(path, spk_id)
             ema_dir = os.path.join(spk_id_path, "nema")
             wav_dir = os.path.join(spk_id_path, "wav")
+            lab_dir = os.path.join(spk_id_path, "lab")
            
             utter_id_set = set()
             for ema in os.listdir(ema_dir):
@@ -53,7 +59,6 @@ class EMA_Dataset:
                     ema_npy_path = os.path.join(ema_dir, ema)
                     self.ema_npy_paths.append(ema_npy_path)
 
-                
             for wav in os.listdir(wav_dir):
                 if not wav.endswith('.wav'):
                     continue
@@ -62,22 +67,44 @@ class EMA_Dataset:
                 if wav_id not in utter_id_set:  #To make sure that redundant wavs are not included
                     continue
                 self.wav_paths.append(wav_path)
-        print("# of npys is ", len(self.ema_npy_paths)) #4409
-        print("# of emas is ", len(self.ema_paths)) #4409
-        print("# of wavs is ", len(self.wav_paths)) #4579
 
-        random.shuffle(self.ema_npy_paths)
+            for lab in os.listdir(lab_dir):
+                if lab.endswith('.lab'):
+                    lab_path = os.path.join(lab_dir, lab)
+                    lab_id = lab_path.split("/")[-1].split(".")[0]
+                    if lab_id not in utter_id_set:  #To make sure that redundant wavs are not included
+                        continue
+                    self.lab_paths.append(lab_path)
+
+                if lab.endswith('.npy'):
+                    lab_npy_path = os.path.join(lab_dir, lab)
+                    self.lab_npy_paths.append(lab_npy_path)
+
+        print("##################################################################################")
+        print("spk setting is ", self.spk_id_setting)
+        print("# of ema npys is ", len(self.ema_npy_paths)) #4409
+        print("# of emas is ", len(self.ema_paths)) #4409
+        print("# of wavs is ", len(self.wav_paths)) #4409 (full: 4579)
+        print("# of labs is ", len(self.lab_paths)) #4409
+        print("# of lab npys is ", len(self.lab_npy_paths)) #4409
+        
+        #random.shuffle(self.ema_npy_paths)
         train_size = int(0.8 * len(self.ema_npy_paths))
         
         if self.mode == 'train':
             self.ema_npy_paths = self.ema_npy_paths[:train_size]
+            self.lab_npy_paths = self.lab_npy_paths[:train_size]
         else:
             self.ema_npy_paths = self.ema_npy_paths[train_size:]
+            self.lab_npy_paths = self.lab_npy_paths[train_size:]
         print(self.mode + "_ size is: ", len(self.ema_npy_paths))
 
         with open("emadata/"+self.mode+"_metalist.txt", 'w') as f:
             for ema_npy_path in self.ema_npy_paths:
                 f.write(ema_npy_path+'\n')
+
+        print("##################################################################################")
+        print("Extract Phoneme Labels(Not Alignment)")
 
     def __len__(self): #4579
         return len(self.ema_npy_paths)
@@ -85,11 +112,11 @@ class EMA_Dataset:
         #wav_path = self.wav_paths[index]
         #waveform = loadWAV(wav_path) #shape is [1, num_points]
         ema_npy_path = self.ema_npy_paths[index]
-        ema_data = torch.FloatTensor(np.load(ema_npy_path))
-        #print(ema_data.shape) #(T_ema, 12)
-        #print(waveform.shape) #(1, T_wav)
-        #print(ema_data.shape[0]/waveform.shape[1])
-
+        lab_npy_path = self.lab_npy_paths[index]
+        ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema_real, 12]
+        lab_data = torch.LongTensor(np.load(lab_npy_path)) #[T_lab]
+        lab_data_unique = torch.unique_consecutive(lab_data) #[T_unique]
+        
         ####################################
         ########Adopt fixed 500 ema points
         ########We should fix t because t is related to H
