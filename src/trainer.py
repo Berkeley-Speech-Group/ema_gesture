@@ -61,7 +61,7 @@ def eval_pr(model, ema_dataloader_test, device, **args):
         lab_len_batch = lab_len_batch.to(device)
         model.eval()
         if args['pr_mel']:
-            log_p_out, p_out, out_lens = model(mel_batch, mel_len_batch)
+            log_p_out, p_out, out_lens = model(mel_batch, mel_len_batch) 
         elif args['pr_ema']:
             log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch) 
         else:
@@ -230,7 +230,7 @@ def trainer_vq_only(model, optimizer, lr_scheduler, ema_dataloader_train, ema_da
 
 def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **args):
 
-    criterion = nn.CTCLoss()
+    criterion = nn.CTCLoss(zero_infinity=True)
 
     #Write into logs
     if not os.path.exists(args['save_path']):
@@ -253,8 +253,8 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             # print("ema", ema_batch.shape)
             # print("ema_len", ema_len_batch.shape)
             # print("ema_len", ema_len_batch)
-            # print("mel", mel_batch.shape)
-            # print("mel_len", mel_len_batch.shape)
+#             print("mel", mel_batch.shape)
+#             print("mel_len", mel_len_batch)
             # print("label", lab_batch.shape)
             # print("label_len", lab_len_batch.shape)
             ema_batch = ema_batch.to(device)
@@ -263,6 +263,7 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             mel_len_batch = mel_len_batch.to(device)
             lab_batch = lab_batch.to(device)
             lab_len_batch = lab_len_batch.to(device)
+            #print("max mel_batch is %.4f, min is %.4f" %(torch.max(mel_batch), torch.min(mel_batch)))
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             model.train()
             optimizer.zero_grad()
@@ -278,7 +279,6 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             ctc_loss_e.append(loss.item())
             loss.backward()
             optimizer.step()
-            lr_scheduler.step()
 
             writer.add_scalar('CTC_Loss_train', loss.item(), count)
             count += 1
@@ -291,7 +291,7 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
         
         #if (e+1) % args['step_size'] == 0:
         #    lr_scheduler.step()
-        #lr_scheduler.step(loss.item())
+        lr_scheduler.step(loss.item())
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs

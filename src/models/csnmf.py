@@ -308,7 +308,7 @@ class PR_Model(nn.Module):
             hidden_size=self.hidden_size,
             num_layers=2,
             bidirectional=True,
-            dropout=0.1
+            dropout=0.05
         )
 
         self.linear_encoder = nn.Linear(2*self.hidden_size, self.num_phns)
@@ -332,8 +332,8 @@ class PR_Model(nn.Module):
         #self.lstm = WeightDrop(self.lstm, weight_names, dropout=0.2)
                 
         #init_linear
-        nn.init.kaiming_normal_(self.linear_encoder.weight.data)
-        nn.init.normal_(self.linear_encoder.bias.data) 
+#         nn.init.kaiming_normal_(self.linear_encoder.weight.data)
+#         nn.init.normal_(self.linear_encoder.bias.data) 
 
 
     def forward(self, inp_utter, inp_utter_len):
@@ -343,11 +343,9 @@ class PR_Model(nn.Module):
         x = self.cnn_encoder1(inp_utter.permute(0,2,1))  #[B, D, T]
         x = self.bn1(x)
         x = self.elu1(x)
-        #x = F.sigmoid(x)
         x = self.cnn_encoder2(x)
         x = self.bn2(x)
         x = self.elu2(x)
-        #x = F.sigmoid(x)
         x = x.permute(2,0,1) #[B, T, D]
         
         #lstm
