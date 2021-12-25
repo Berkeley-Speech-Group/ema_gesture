@@ -34,7 +34,17 @@ Fourth, run kmeans on ema huge and supervector:
 python ./src/kmeans.py
 ```
 
+## Install CTCBeamDecoder:
 
+
+
+```
+git clone --recursive https://github.com/parlance/ctcdecode.git
+pip install wget
+cd ctcdecode
+pip install .
+cd ..
+```
 
 ## Train with Sparse Gestural Scores
 
