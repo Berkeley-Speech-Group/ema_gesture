@@ -77,8 +77,8 @@ def eval_pr(model, ema_dataloader_test, device, **args):
                                                             # shape of res_lens: batch_size, len_labels
             
 #         print("val_out.shape", val_out.shape)
-        print("lab shape", lab_batch.shape)
-        print("val_out_lens", val_out_lens)
+#         print("lab shape", lab_batch.shape)
+#         print("val_out_lens", val_out_lens)
 #         print("label_len", lab_len_batch)
         cur_batch_size = val_out.shape[0]
         

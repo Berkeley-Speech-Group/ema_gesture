@@ -306,7 +306,7 @@ class PR_Model(nn.Module):
         self.lstm_encoder = nn.LSTM(
             input_size=self.hidden_size, #256
             hidden_size=self.hidden_size,
-            num_layers=2,
+            num_layers=1,
             bidirectional=True,
             dropout=0.1
         )
