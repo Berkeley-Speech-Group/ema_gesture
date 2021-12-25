@@ -306,12 +306,35 @@ class PR_Model(nn.Module):
         self.lstm_encoder = nn.LSTM(
             input_size=self.hidden_size, #256
             hidden_size=self.hidden_size,
-            num_layers=1,
+            num_layers=2,
             bidirectional=True,
             dropout=0.1
         )
 
         self.linear_encoder = nn.Linear(2*self.hidden_size, self.num_phns)
+        self.init_parameters()
+        
+    def init_parameters(self):      
+        
+        #init_cnn
+        nn.init.kaiming_normal_(self.cnn_encoder1.weight.data)
+        nn.init.normal_(self.cnn_encoder1.bias.data)
+        nn.init.kaiming_normal_(self.cnn_encoder2.weight.data)
+        nn.init.normal_(self.cnn_encoder2.bias.data)
+        
+        #init_bn
+        self.bn1.weight.data.normal_(1.0, 0.02)
+        self.bn2.weight.data.normal_(1.0, 0.02)
+        
+        #init_lstm
+        #from weight_drop import WeightDrop
+        #weight_names = [name for name, param in self.lstm.named_parameters() if 'weight' in name]
+        #self.lstm = WeightDrop(self.lstm, weight_names, dropout=0.2)
+                
+        #init_linear
+        nn.init.kaiming_normal_(self.linear_encoder.weight.data)
+        nn.init.normal_(self.linear_encoder.bias.data) 
+
 
     def forward(self, inp_utter, inp_utter_len):
 
@@ -320,16 +343,18 @@ class PR_Model(nn.Module):
         x = self.cnn_encoder1(inp_utter.permute(0,2,1))  #[B, D, T]
         x = self.bn1(x)
         x = self.elu1(x)
+        #x = F.sigmoid(x)
         x = self.cnn_encoder2(x)
         x = self.bn2(x)
         x = self.elu2(x)
+        #x = F.sigmoid(x)
         x = x.permute(2,0,1) #[B, T, D]
         
         #lstm
         packed_x = pack_padded_sequence(x, inp_utter_len.cpu(), enforce_sorted=False) #X: [max_utterance, batch_size, frame_size]
         packed_out = self.lstm_encoder(packed_x)[0]
         out, out_lens = pad_packed_sequence(packed_out) # out: [max_utterance, batch_size, frame_size]
-        
+
         # Log softmax after output layer is required since`nn.CTCLoss` expects log probabilities.
         #out = self.transformer(out)
         p_out = self.linear_encoder(out).softmax(2)
