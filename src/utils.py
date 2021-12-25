@@ -25,6 +25,7 @@ def butter_highpass(cutoff, fs, order=5):
     return b, a
 
 def pySTFT(x, fft_length=1024, hop_length=256):
+    
     #delta = fft_length - hop_length
     #if (len(x) - delta) % hop_length != 0:
     #    pad_width = (len(x) // hop_length + 1) * hop_length + delta - len(x)
@@ -43,25 +44,17 @@ def pySTFT(x, fft_length=1024, hop_length=256):
 
 def wav2mel(wav):
     #input size of wav should be [1, length]
-    sr = 16000
-    mel_basis = mel(sr, 1024, fmin=10, fmax=8000, n_mels=80).T
+    mel_basis = mel(16000, 1024, fmin=90, fmax=7600, n_mels=80).T
     min_level = np.exp(-100 / 20 * np.log(10))
-    b, a = butter_highpass(3, sr, order=5)
+    b, a = butter_highpass(30, 16000, order=5)
+
     wav = signal.filtfilt(b, a, wav.reshape(-1).numpy())
-    #wav = wav.reshape(-1).numpy()
-   
     D = pySTFT(wav).T
     # Convert to mel and normalize
     D_mel = np.dot(D, mel_basis)
     D_db = 20 * np.log10(np.maximum(min_level, D_mel)) - 16
-    #S = np.clip((D_db + 100) / 100, 0, 1)  
-    S = D_db
+    S = np.clip((D_db + 100) / 100, 0, 1)  
     mel_spec = torch.FloatTensor(S) #shape should be [T, 80]
-
-    #y, sr = librosa.load("off.wav") #y:[21969, ]
-    # y = wav[0].cpu().numpy()
-    # mel_spec = librosa.feature.melspectrogram(y=y, sr=22050)
-    # print(mel_spec.shape)
     return mel_spec
 
 

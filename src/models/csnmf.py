@@ -316,6 +316,7 @@ class PR_Model(nn.Module):
     def forward(self, inp_utter, inp_utter_len):
 
         #inp_utter: [B, T, D]
+
         x = self.cnn_encoder1(inp_utter.permute(0,2,1))  #[B, D, T]
         x = self.bn1(x)
         x = self.elu1(x)

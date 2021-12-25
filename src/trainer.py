@@ -278,6 +278,7 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             ctc_loss_e.append(loss.item())
             loss.backward()
             optimizer.step()
+            lr_scheduler.step()
 
             writer.add_scalar('CTC_Loss_train', loss.item(), count)
             count += 1
@@ -290,7 +291,7 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
         
         #if (e+1) % args['step_size'] == 0:
         #    lr_scheduler.step()
-        lr_scheduler.step(loss.item())
+        #lr_scheduler.step(loss.item())
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs
