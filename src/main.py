@@ -36,6 +36,7 @@ parser.add_argument('--step_size', type=int, default=3, help='step_size')
 parser.add_argument('--eval_epoch', type=int, default=5, help='eval_epoch')
 parser.add_argument('--num_workers', type=int, default=4, help='num_workers')
 parser.add_argument('--num_phns', type=int, default=42, help='num_phns')
+parser.add_argument('--beam_width', type=int, default=5, help='beam_width')
 parser.add_argument('--lr_decay_rate',type=float, default=0.9, help='lr_decay_rate')
 parser.add_argument('--vis_kinematics', action='store_true', help='')
 parser.add_argument('--vis_gestures', action='store_true', help='')
@@ -126,7 +127,7 @@ if __name__ == "__main__":
 
     #optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.8)
+    #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.8)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=4, threshold=0.0001)
 
     if args.pr_h or args.pr_mel or args.pr_ema:

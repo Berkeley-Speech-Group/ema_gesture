@@ -64,6 +64,7 @@ cnt = 0
 for key in sorted(phn_set):
     phn_map[key] = cnt
     cnt += 1
+PHONEME_MAP = phn_map
 
 print("phn_map is ", phn_map)
 
