@@ -142,7 +142,7 @@ def collate(batch):
     #wav_batch, [B, 1, num_points(variable)], actually it is list
     #mel_batch, [B, T_mel(variable), 80], actually it is 
 
-    ema_len_batch = torch.LongTensor(
+    ema_len_batch = torch.IntTensor(
         [len(ema) for ema in ema_batch]
     )
     max_ema_len = torch.max(ema_len_batch)
@@ -157,7 +157,7 @@ def collate(batch):
         ]), dim=0
     )
 
-    mel_len_batch = torch.LongTensor(
+    mel_len_batch = torch.IntTensor(
         [len(mel) for mel in mel_batch]
     )
 
@@ -172,7 +172,7 @@ def collate(batch):
         ]), dim=0
     )
 
-    lab_len_batch = torch.LongTensor(
+    lab_len_batch = torch.IntTensor(
         [len(lab_seq) for lab_seq in lab_batch]
     )
 

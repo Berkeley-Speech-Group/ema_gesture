@@ -325,7 +325,7 @@ class PR_Model(nn.Module):
         x = x.permute(2,0,1) #[B, T, D]
         
         #lstm
-        packed_x = pack_padded_sequence(x, inp_utter_len, enforce_sorted=False) #X: [max_utterance, batch_size, frame_size]
+        packed_x = pack_padded_sequence(x, inp_utter_len.cpu(), enforce_sorted=False) #X: [max_utterance, batch_size, frame_size]
         packed_out = self.lstm_encoder(packed_x)[0]
         out, out_lens = pad_packed_sequence(packed_out) # out: [max_utterance, batch_size, frame_size]
         

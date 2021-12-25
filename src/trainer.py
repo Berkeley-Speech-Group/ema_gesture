@@ -230,4 +230,4 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
         f.write("epoch: %d \n" %(e))
         f.write("Ave loss is %.4f\n" %(sum(ctc_loss_e)/len(ctc_loss_e)))
         f.write("batch_size is {} \n".format(args['batch_size']))
-        f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
+        #f.write("lr = %.4f \n" %(lr_scheduler.get_last_lr()[0]))
