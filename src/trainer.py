@@ -40,7 +40,7 @@ def eval_pr(model, ema_dataloader_test, device, **args):
     print("###################################################")
     print("###########Start EValuating(PR)########################")
     print("###################################################")
-    criterion = nn.CTCLoss()
+    criterion = nn.CTCLoss(zero_infinity=True)
     ctc_loss_e = []
     edit_distance = 0.0
     count_edit = 0
@@ -99,7 +99,7 @@ def eval_pr(model, ema_dataloader_test, device, **args):
             edit_distance += Levenshtein.distance(res_str[m], label_str[m])
             count_edit += 1
 
-        sys.stdout.write("Eval CTC_loss=%.4f" %(loss.item()))
+    sys.stdout.write("Eval CTC_loss=%.4f\n" %(loss.item()))
 
     print("PER is: ", edit_distance / count_edit)
 
