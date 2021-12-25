@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from ctcdecode import CTCBeamDecoder
-from preprocess.nema_label2npy import PHONEME_MAP
+from config import PHONEME_LIST
 import Levenshtein
 
 def eval_resynthesis(model, ema_dataloader_test, device, **args):
@@ -43,17 +43,16 @@ def eval_pr(model, ema_dataloader_test, device, **args):
     criterion = nn.CTCLoss()
     ctc_loss_e = []
     edit_distance = 0.0
-    count_eval = 0
-    for i, (ema_batch, mel_batch, ema_len_batch, mel_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
-        count_eval += 1
+    count_edit = 0
+    for i, (ema_batch, mel_batch, ema_len_batch, mel_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
 
-        # print("ema", ema_batch.shape)
-        # print("ema_len", ema_len_batch.shape)
-        # print("ema_len", ema_len_batch)
-        # print("mel", mel_batch.shape)
-        # print("mel_len", mel_len_batch.shape)
-        # print("label", lab_batch.shape)
-        # print("label_len", lab_len_batch.shape)
+#         print("ema", ema_batch.shape)
+#         print("ema_len", ema_len_batch.shape)
+#         print("ema_len", ema_len_batch)
+#         print("mel", mel_batch.shape)
+#         print("mel_len", mel_len_batch.shape)
+#         print("label", lab_batch.shape)
+#         print("label_len", lab_len_batch.shape)
         ema_batch = ema_batch.to(device)
         ema_len_batch = ema_len_batch.to(device)
         mel_batch = mel_batch.to(device)
@@ -71,32 +70,38 @@ def eval_pr(model, ema_dataloader_test, device, **args):
         loss = criterion(log_p_out, lab_batch, out_lens, lab_len_batch)
         ctc_loss_e.append(loss.item())
 
-        decoder = CTCBeamDecoder(PHONEME_MAP, beam_width=args['beam_width'])
-        val_real_out = torch.transpose(val_real_out, 1, 0)
+        decoder = CTCBeamDecoder(PHONEME_LIST, beam_width=args['beam_width'])
+        p_out = torch.transpose(p_out, 1, 0) #[B, T, D] -> [T, B, D]
         #print(out.shape)
         val_out, _, _, val_out_lens = decoder.decode(p_out, out_lens) # shape of res: batch_size, beam_width, max_label_len(beam_width index =0 is the best)
                                                             # shape of res_lens: batch_size, len_labels
+            
+#         print("val_out.shape", val_out.shape)
+        print("lab shape", lab_batch.shape)
+        print("val_out_lens", val_out_lens)
+#         print("label_len", lab_len_batch)
         cur_batch_size = val_out.shape[0]
         
         
         res_str = ["" for index in range(cur_batch_size)]
         for m in range(cur_batch_size):
             for j in range(val_out_lens[m, 0]):
-                res_str[m] += PHONEME_MAP[val_out[m,0,j]]
-
+                res_str[m] += PHONEME_LIST[val_out[m,0,j]]
+                
         # label_seq_batch, [batch_size, max_label_len]
         # label_seq_len_batch [batch_size]
         label_str = ["" for index in range(cur_batch_size)]
         for m in range(cur_batch_size):
             for j in range(lab_len_batch[m]):
-                label_str[m] += PHONEME_MAP[lab_len_batch[m][j]]
+                label_str[m] += PHONEME_LIST[lab_batch[m][j]]
 
         for m in range(cur_batch_size):
             edit_distance += Levenshtein.distance(res_str[m], label_str[m])
+            count_edit += 1
 
         sys.stdout.write("Eval CTC_loss=%.4f" %(loss.item()))
 
-    print("PER is: ", edit_distance / count_eval)
+    print("PER is: ", edit_distance / count_edit)
 
 
 
@@ -239,9 +244,8 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
     writer = SummaryWriter()
     count = 0
     for e in range(args['num_epochs']):
-        # if (e+1) % args['eval_epoch'] == 0:
-        #     ####start evaluation
-        #     eval_pr(model, ema_dataloader_test)
+        if (e+1) % args['eval_epoch'] == 0:
+            eval_pr(model, ema_dataloader_test, device, **args)
 
         ctc_loss_e = []
         for i, (ema_batch, mel_batch, ema_len_batch, mel_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
@@ -281,6 +285,8 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             sys.stdout.write("ctc_loss=%.4f" %(loss.item()))
 
         print("|Epoch: %d Avg CTCLoss is %.4f" %(e, sum(ctc_loss_e)/len(ctc_loss_e)))
+        
+
         
         #if (e+1) % args['step_size'] == 0:
         #    lr_scheduler.step()

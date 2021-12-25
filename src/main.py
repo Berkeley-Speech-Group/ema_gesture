@@ -12,7 +12,7 @@ from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset, collate
 from models.csnmf import AE_CSNMF_VQ, AE_CSNMF_VQ_only,AE_CSNMF, AE_CSNMF2, PR_Model
-from trainer import trainer_resynthesis, trainer_pr, trainer_vq_only, eval_resynthesis
+from trainer import trainer_resynthesis, trainer_pr, trainer_vq_only, eval_resynthesis, eval_pr
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
