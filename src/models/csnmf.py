@@ -295,7 +295,7 @@ class PR_Model(nn.Module):
         elif self.pr_ema:
             self.in_channels = 12
 
-        self.hidden_size = 256
+        self.hidden_size = 512
         self.cnn_encoder1 = nn.Conv1d(in_channels=self.in_channels,out_channels=self.hidden_size // 2,kernel_size=3, padding=1, stride=1, bias=True)
         self.bn1 = nn.BatchNorm1d(self.hidden_size // 2)
         self.elu1 = nn.ELU()
@@ -306,9 +306,9 @@ class PR_Model(nn.Module):
         self.lstm_encoder = nn.LSTM(
             input_size=self.hidden_size, #256
             hidden_size=self.hidden_size,
-            num_layers=2,
+            num_layers=3,
             bidirectional=True,
-            dropout=0.05
+            dropout=0.1
         )
 
         self.linear_encoder = nn.Linear(2*self.hidden_size, self.num_phns)
