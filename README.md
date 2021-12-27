@@ -37,11 +37,17 @@ python ./src/kmeans.py
 ## Install CTCBeamDecoder:
 
 
-
 ```
 git clone --recursive https://github.com/parlance/ctcdecode.git
 cd ctcdecode
 pip install .
+```
+
+## Install Editdistance:
+
+
+```
+pip install Levenshtein
 ```
 
 ## Train with Sparse Gestural Scores
