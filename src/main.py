@@ -7,8 +7,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchnmf.nmf import NMF2D, NMFD
-from torchnmf.metrics import kl_div
+# from torchnmf.nmf import NMF2D, NMFD
+# from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset, collate
 from models.csnmf import AE_CSNMF_VQ, AE_CSNMF_VQ_only,AE_CSNMF, AE_CSNMF2, PR_Model
@@ -27,7 +27,7 @@ parser.add_argument('--win_size', type=int, default=41, help='')
 parser.add_argument('--segment_len', type=int, default=100, help='')
 parser.add_argument('--num_epochs', type=int, default=500, help='')
 parser.add_argument('--learning_rate', type=float, default=1e-3, help='')
-parser.add_argument('--weight_decay', type=float, default=0, help='')
+parser.add_argument('--weight_decay', type=float, default=1e-4, help='')
 parser.add_argument('--model_path', type=str, default='', help='')
 parser.add_argument('--save_path', type=str, default='save_models/test', help='')
 parser.add_argument('--test_ema_path', type=str, default='', help='')
@@ -127,8 +127,8 @@ if __name__ == "__main__":
 
     #optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.8)
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=3, threshold=0.0001)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.9)
+    #lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=3, threshold=0.0001)
 
     if args.pr_h or args.pr_mel or args.pr_ema:
         trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))

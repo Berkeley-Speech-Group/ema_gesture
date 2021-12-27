@@ -40,7 +40,7 @@ def eval_pr(model, ema_dataloader_test, device, **args):
     print("###################################################")
     print("###########Start EValuating(PR)########################")
     print("###################################################")
-    criterion = nn.CTCLoss(zero_infinity=True)
+    criterion = nn.CTCLoss(blank=28, zero_infinity=True)
     ctc_loss_e = []
     edit_distance = 0.0
     count_edit = 0
@@ -230,7 +230,7 @@ def trainer_vq_only(model, optimizer, lr_scheduler, ema_dataloader_train, ema_da
 
 def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **args):
 
-    criterion = nn.CTCLoss(zero_infinity=True)
+    criterion = nn.CTCLoss(blank=28, zero_infinity=True)
 
     #Write into logs
     if not os.path.exists(args['save_path']):
@@ -289,9 +289,9 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
         
 
         
-        #if (e+1) % args['step_size'] == 0:
-        #    lr_scheduler.step()
-        lr_scheduler.step(loss.item())
+        if (e+1) % args['step_size'] == 0:
+            lr_scheduler.step()
+        #lr_scheduler.step(loss.item())
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs
