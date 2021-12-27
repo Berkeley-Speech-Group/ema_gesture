@@ -33,7 +33,7 @@ parser.add_argument('--save_path', type=str, default='save_models/test', help=''
 parser.add_argument('--test_ema_path', type=str, default='', help='')
 parser.add_argument('--spk_id', type=str, default='all', help='')
 parser.add_argument('--step_size', type=int, default=3, help='step_size')
-parser.add_argument('--eval_epoch', type=int, default=5, help='eval_epoch')
+parser.add_argument('--eval_epoch', type=int, default=1, help='eval_epoch')
 parser.add_argument('--num_workers', type=int, default=4, help='num_workers')
 parser.add_argument('--num_phns', type=int, default=42, help='num_phns')
 parser.add_argument('--beam_width', type=int, default=5, help='beam_width')
