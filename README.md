@@ -40,10 +40,8 @@ python ./src/kmeans.py
 
 ```
 git clone --recursive https://github.com/parlance/ctcdecode.git
-pip install wget
 cd ctcdecode
 pip install .
-cd ..
 ```
 
 ## Train with Sparse Gestural Scores
