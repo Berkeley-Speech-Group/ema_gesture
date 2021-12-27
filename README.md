@@ -10,7 +10,7 @@ https://docs.google.com/presentation/d/10XbOxXiPCrw9Go2Qp_-aBY7Cp7l6JDoCT87a2W8V
 
 ### Docs (2022 NAACL, Jan 16 2022)
 
-https://docs.google.com/document/d/10n9Oaaqu7THBYDambokOtfEDqT-cnQs_uYpKxhSUh_Q/edit?usp=sharing
+https://www.dropbox.com/scl/fi/orhv9g851sfftdbr0lssz/Gestural-Unit-Discovery2022-NAACL-Jan16Jan15-JSTSP.paper?dl=0&rlkey=bbhoawttjstpbl255mutxk8df
 
 ## Datasets
 
