@@ -13,4 +13,8 @@ PHONEME_LIST = ['aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'ay', 'b', 'ch', 'd', 'dh', 
                'hh', 'ih', 'iy', 'jh', 'k', 'l', 'm', 'n', 'ng', 'ow', 'oy', 'p', 'pau', 'r', 's', 'sh', 'ssil', 
                't', 'th', 'uh', 'uw', 'v', 'w', 'y', 'z', 'zh']
 
+PHONEME_LIST_WITH_BLANK = ['aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'ay', 'b', 'ch', 'd', 'dh', 'eh', 'er', 'ey', 'f', 'g',
+               'hh', 'ih', 'iy', 'jh', 'k', 'l', 'm', 'n', 'ng', 'ow', 'oy', 'p', 'pau', 'r', 's', 'sh', 'ssil', 
+               't', 'th', 'uh', 'uw', 'v', 'w', 'y', 'z', 'zh', ' ']
+
 

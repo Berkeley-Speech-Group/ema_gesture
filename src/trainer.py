@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from ctcdecode import CTCBeamDecoder
-from config import PHONEME_LIST
+from config import PHONEME_LIST, PHONEME_LIST_WITH_BLANK
 import Levenshtein
 
 def eval_resynthesis(model, ema_dataloader_test, device, **args):
@@ -40,7 +40,7 @@ def eval_pr(model, ema_dataloader_test, device, **args):
     print("###################################################")
     print("###########Start EValuating(PR)########################")
     print("###################################################")
-    criterion = nn.CTCLoss(blank=28, zero_infinity=True)
+    criterion = nn.CTCLoss(blank=42, zero_infinity=True)
     ctc_loss_e = []
     edit_distance = 0.0
     count_edit = 0
@@ -70,7 +70,8 @@ def eval_pr(model, ema_dataloader_test, device, **args):
         loss = criterion(log_p_out, lab_batch, out_lens, lab_len_batch)
         ctc_loss_e.append(loss.item())
 
-        decoder = CTCBeamDecoder(PHONEME_LIST, beam_width=args['beam_width'])
+        #decoder = CTCBeamDecoder(PHONEME_LIST, beam_width=args['beam_width'])
+        decoder = CTCBeamDecoder(PHONEME_LIST_WITH_BLANK, blank_id=42, beam_width=args['beam_width'])
         p_out = torch.transpose(p_out, 1, 0) #[B, T, D] -> [T, B, D]
         #print(out.shape)
         val_out, _, _, val_out_lens = decoder.decode(p_out, out_lens) # shape of res: batch_size, beam_width, max_label_len(beam_width index =0 is the best)
@@ -82,18 +83,17 @@ def eval_pr(model, ema_dataloader_test, device, **args):
 #         print("label_len", lab_len_batch)
         cur_batch_size = val_out.shape[0]
         
-        
         res_str = ["" for index in range(cur_batch_size)]
         for m in range(cur_batch_size):
             for j in range(val_out_lens[m, 0]):
-                res_str[m] += PHONEME_LIST[val_out[m,0,j]]
+                res_str[m] += PHONEME_LIST_WITH_BLANK[val_out[m,0,j]]
                 
         # label_seq_batch, [batch_size, max_label_len]
         # label_seq_len_batch [batch_size]
         label_str = ["" for index in range(cur_batch_size)]
         for m in range(cur_batch_size):
             for j in range(lab_len_batch[m]):
-                label_str[m] += PHONEME_LIST[lab_batch[m][j]]
+                label_str[m] += PHONEME_LIST_WITH_BLANK[lab_batch[m][j]]
 
         for m in range(cur_batch_size):
             edit_distance += Levenshtein.distance(res_str[m], label_str[m])
@@ -230,7 +230,7 @@ def trainer_vq_only(model, optimizer, lr_scheduler, ema_dataloader_train, ema_da
 
 def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **args):
 
-    criterion = nn.CTCLoss(blank=28, zero_infinity=True)
+    criterion = nn.CTCLoss(blank=42, zero_infinity=True)
 
     #Write into logs
     if not os.path.exists(args['save_path']):

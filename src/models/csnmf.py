@@ -288,7 +288,9 @@ class PR_Model(nn.Module):
         self.pr_mel = args['pr_mel']
         self.pr_ema = args['pr_ema']
         self.pr_mel = args['pr_mel']
-        self.num_phns = args['num_phns']
+        #self.num_phns = args['num_phns']
+        self.num_phns = 43 #if with blank else 42
+        
         
         if self.pr_mel:
             self.in_channels = 80
