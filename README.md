@@ -12,6 +12,35 @@ https://docs.google.com/presentation/d/10XbOxXiPCrw9Go2Qp_-aBY7Cp7l6JDoCT87a2W8V
 
 https://www.dropbox.com/scl/fi/orhv9g851sfftdbr0lssz/Gestural-Unit-Discovery2022-NAACL-Jan16Jan15-JSTSP.paper?dl=0&rlkey=bbhoawttjstpbl255mutxk8df
 
+## Environents
+
+'''
+conda create --name ema
+conda activate ema
+conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
+'''
+
+## Install CTCBeamDecoder:
+
+
+```
+git clone --recursive https://github.com/parlance/ctcdecode.git
+cd ctcdecode
+pip install .
+
+```
+
+## Install Other Packages:
+
+
+```
+conda install -c conda-forge librosa
+conda install -c conda-forge tensorboardy
+pip install Levenshtein
+pip install seaborn
+
+```
+
 ## Datasets
 
 First, download EMA data from http://tts.speech.cs.cmu.edu/gopalakr/emadata.tgz, extract it. Check .gitignore for the path of "emadata". Note that we use "nema" data, which is the standardized version of the original data. There are 4579 wav utterances but 4409 ema kinematics data. To handle such mismatch, we only take the ema data that has its corresponding waveform. Actually the first stage(Task 1 of proposal) focuses on gestural unit discovery and only ema data is used.  
@@ -32,23 +61,6 @@ Fourth, run kmeans on ema huge and supervector:
 
 ```
 python ./src/kmeans.py
-```
-
-## Install CTCBeamDecoder:
-
-
-```
-git clone --recursive https://github.com/parlance/ctcdecode.git
-cd ctcdecode
-pip install .
-```
-
-## Install Other Packages:
-
-
-```
-pip install Levenshtein
-pip install seaborn
 ```
 
 
