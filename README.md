@@ -20,20 +20,12 @@ conda activate ema
 conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
 '''
 
-## Install CTCBeamDecoder:
-
+## Install Packages:
 
 ```
 git clone --recursive https://github.com/parlance/ctcdecode.git
 cd ctcdecode
 pip install .
-
-```
-
-## Install Other Packages:
-
-
-```
 conda install -c conda-forge librosa
 conda install -c conda-forge tensorboard
 pip install Levenshtein
