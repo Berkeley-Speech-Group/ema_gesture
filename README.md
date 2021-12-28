@@ -50,6 +50,14 @@ pip install .
 pip install Levenshtein
 ```
 
+## Install Editdistance:
+
+
+```
+pip install seaborn
+```
+
+
 ## Train with Sparse Gestural Scores
 
 
