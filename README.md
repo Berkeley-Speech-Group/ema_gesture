@@ -14,11 +14,11 @@ https://www.dropbox.com/scl/fi/orhv9g851sfftdbr0lssz/Gestural-Unit-Discovery2022
 
 ## Environents
 
-'''
+```
 conda create --name ema
 conda activate ema
 conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
-'''
+```
 
 ## Install Packages:
 
