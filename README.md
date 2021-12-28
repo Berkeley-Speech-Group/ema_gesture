@@ -35,7 +35,7 @@ pip install .
 
 ```
 conda install -c conda-forge librosa
-conda install -c conda-forge tensorboardy
+conda install -c conda-forge tensorboard
 pip install Levenshtein
 pip install seaborn
 
