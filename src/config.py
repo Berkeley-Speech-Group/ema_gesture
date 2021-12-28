@@ -17,4 +17,56 @@ PHONEME_LIST_WITH_BLANK = ['aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'ay', 'b', 'ch', 
                'hh', 'ih', 'iy', 'jh', 'k', 'l', 'm', 'n', 'ng', 'ow', 'oy', 'p', 'pau', 'r', 's', 'sh', 'ssil', 
                't', 'th', 'uh', 'uw', 'v', 'w', 'y', 'z', 'zh', ' ']
 
+PHONEME_MAP = [
+    'a',  # "aa"
+    'A',  # "ae"
+    'h',  # "ah"
+    'o',  # "ao"
+    'w',  # "aw"
+    'X',  # "ax"
+    'y',  # "ay"
+    'b',  # "b"
+    'c',  # "ch"
+    'd',  # "d"
+    'D',  # "dh"
+    'e',  # "eh"
+    'r',  # "er"
+    'E',  # "ey"
+    'f',  # "f"
+    'g',  # "g"
+    'H',  # "hh"
+    'i',  # "ih"
+    'I',  # "iy"
+    'j',  # "jh"
+    'k',  # "k"
+    'l',  # "l"
+    'm',  # "m"
+    'n',  # "n"
+    'G',  # "ng"
+    'O',  # "ow"
+    'Y',  # "oy"
+    'p',  # "p"
+    '&',  # "pau"
+    'R',  # "r"
+    's',  # "s"
+    'S',  # "sh"
+    '.',  # "ssil"
+    't',  # "t"
+    'T',  # "th"
+    'u',  # "uh"
+    'U',  # "uw"
+    'v',  # "v"
+    'W',  # "w"
+    '?',  # "y"
+    'z',  # "z"
+    'Z',  # "zh"
+    ' ', # "BLANK"
+]
+
+if __name__ == '__main__':
+    print("len of PHONEME_MAP: ", len(PHONEME_MAP))
+    print("len of PHONEME_LIST: ", len(PHONEME_LIST))
+    print("len of PHONEME_LIST_WITH_BLANK: ", len(PHONEME_LIST_WITH_BLANK))
+    #print(len(set(PHONEME_MAP)))
+
 
