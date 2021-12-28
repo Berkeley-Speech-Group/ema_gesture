@@ -43,17 +43,11 @@ cd ctcdecode
 pip install .
 ```
 
-## Install Editdistance:
+## Install Other Packages:
 
 
 ```
 pip install Levenshtein
-```
-
-## Install Seaborn:
-
-
-```
 pip install seaborn
 ```
 
