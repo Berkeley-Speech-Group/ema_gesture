@@ -50,7 +50,7 @@ pip install .
 pip install Levenshtein
 ```
 
-## Install Editdistance:
+## Install Seaborn:
 
 
 ```
