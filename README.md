@@ -26,6 +26,7 @@ conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
 git clone --recursive https://github.com/parlance/ctcdecode.git
 cd ctcdecode
 pip install .
+cd ..
 conda install -c conda-forge librosa
 conda install -c conda-forge tensorboard
 pip install Levenshtein
