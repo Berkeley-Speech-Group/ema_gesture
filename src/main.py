@@ -49,6 +49,7 @@ parser.add_argument('--sparse_c_factor',type=float, default=1e-3, help='')
 parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
 parser.add_argument('--entropy_t_factor',type=float, default=1, help='')
 parser.add_argument('--entropy_c_factor',type=float, default=1, help='')
+parser.add_argument('--pr_joint_factor',type=float, default=10, help='')
 parser.add_argument('--vq_factor',type=float, default=1, help='')
 parser.add_argument('--sparse_c_base',type=float, default=0.95, help='')
 parser.add_argument('--sparse_t_base',type=float, default=0.95, help='')
@@ -59,6 +60,7 @@ parser.add_argument('--fixed_length', action='store_true', help='')
 parser.add_argument('--pr_mel', action='store_true', help='')
 parser.add_argument('--pr_ema', action='store_true', help='')
 parser.add_argument('--pr_h', action='store_true', help='')
+parser.add_argument('--pr_joint', action='store_true', help='')
 parser.add_argument('--asr_wav', action='store_true', help='')
 parser.add_argument('--asr_ema', action='store_true', help='')
 parser.add_argument('--asr_h', action='store_true', help='')
@@ -130,7 +132,7 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.9)
     #lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=3, threshold=0.0001)
 
-    if args.pr_h or args.pr_mel or args.pr_ema:
+    if args.pr_mel or args.pr_ema:
         trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
     elif args.vq_only:
         trainer_vq_only(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))

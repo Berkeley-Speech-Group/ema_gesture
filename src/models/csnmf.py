@@ -10,6 +10,89 @@ import sys
 sys.path.append("src/models/")
 from vq import VQ_VAE
 
+class PR_Model(nn.Module):
+    def __init__(self, **args):
+        super().__init__()
+        self.pr_mel = args['pr_mel']
+        self.pr_ema = args['pr_ema']
+        self.pr_mel = args['pr_mel']
+        #self.num_phns = args['num_phns']
+        self.num_phns = 43 #if with blank else 42
+        
+        if self.pr_mel:
+            self.in_channels = 80
+        elif self.pr_ema:
+            self.in_channels = 12
+        elif self.pr_joint:
+            self.in_channels = args['num_gestures']
+        else:
+            print("Error!! No ")
+
+        self.hidden_size = 512
+        self.cnn_encoder1 = nn.Conv1d(in_channels=self.in_channels,out_channels=self.hidden_size // 2,kernel_size=3, padding=1, stride=1, bias=True)
+        self.bn1 = nn.BatchNorm1d(self.hidden_size // 2)
+        self.elu1 = nn.ELU()
+        self.cnn_encoder2 = nn.Conv1d(in_channels=self.hidden_size // 2,out_channels=self.hidden_size,kernel_size=3, padding=1, stride=1, bias=True)
+        self.bn2 = nn.BatchNorm1d(self.hidden_size)
+        self.elu2 = nn.ELU()        
+
+        self.lstm_encoder = nn.LSTM(
+            input_size=self.hidden_size, #256
+            hidden_size=self.hidden_size,
+            num_layers=3,
+            bidirectional=True,
+            dropout=0.1
+        )
+
+        self.linear_encoder = nn.Linear(2*self.hidden_size, self.num_phns)
+        self.init_parameters()
+        
+    def init_parameters(self):      
+        
+        #init_cnn
+        nn.init.kaiming_normal_(self.cnn_encoder1.weight.data)
+        nn.init.normal_(self.cnn_encoder1.bias.data)
+        nn.init.kaiming_normal_(self.cnn_encoder2.weight.data)
+        nn.init.normal_(self.cnn_encoder2.bias.data)
+        
+        #init_bn
+        self.bn1.weight.data.normal_(1.0, 0.02)
+        self.bn2.weight.data.normal_(1.0, 0.02)
+        
+        #init_lstm
+        #from weight_drop import WeightDrop
+        #weight_names = [name for name, param in self.lstm.named_parameters() if 'weight' in name]
+        #self.lstm = WeightDrop(self.lstm, weight_names, dropout=0.2)
+                
+        #init_linear
+#         nn.init.kaiming_normal_(self.linear_encoder.weight.data)
+#         nn.init.normal_(self.linear_encoder.bias.data) 
+
+
+    def forward(self, inp_utter, inp_utter_len):
+
+        #inp_utter: [B, T, D]
+
+        x = self.cnn_encoder1(inp_utter.permute(0,2,1))  #[B, D, T]
+        x = self.bn1(x)
+        x = self.elu1(x)
+        x = self.cnn_encoder2(x)
+        x = self.bn2(x)
+        x = self.elu2(x)
+        x = x.permute(2,0,1) #[B, T, D]
+        
+        #lstm
+        packed_x = pack_padded_sequence(x, inp_utter_len.cpu(), enforce_sorted=False) #X: [max_utterance, batch_size, frame_size]
+        packed_out = self.lstm_encoder(packed_x)[0]
+        out, out_lens = pad_packed_sequence(packed_out) # out: [max_utterance, batch_size, frame_size]
+
+        # Log softmax after output layer is required since`nn.CTCLoss` expects log probabilities.
+        #out = self.transformer(out)
+        p_out = self.linear_encoder(out).softmax(2)
+        log_p_out = self.linear_encoder(out).log_softmax(2)
+
+        return log_p_out, p_out, out_lens
+
 
 class AE_CSNMF(nn.Module):
     def __init__(self, **args):
@@ -112,6 +195,7 @@ class AE_CSNMF2(nn.Module):
         self.conv_encoder7 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
         self.sparse_c_base = args['sparse_c_base']
         self.sparse_t_base = args['sparse_t_base']
+        self.pr_joint = args['pr_joint']
 
         ######Apply weights of k-means to gestures
         if self.num_gestures == 20:
@@ -128,6 +212,9 @@ class AE_CSNMF2(nn.Module):
         self.conv_decoder_weight = nn.Parameter(kmeans_centers)
         self.gesture_weight = self.conv_decoder_weight
 
+        if self.pr_joint == args['pr_joint']:
+            self.pr_model = PR_Model()
+
     def forward(self, x):
         #shape of x is [B,t,A]
         time_steps = x.shape[1]
@@ -139,6 +226,8 @@ class AE_CSNMF2(nn.Module):
         #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
         H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
+        if self.pr_joint:
+            log_p_out, p_out, out_lens = self.pr_model(H)
 
         latent_H = H
         sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
@@ -146,7 +235,11 @@ class AE_CSNMF2(nn.Module):
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
         #print(self.conv_decoder_weight)
-        return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
+
+        if self.pr_joint:
+            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  
+        else:
+            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
 
     def loadParameters(self, path):
         self_state = self.state_dict()
@@ -282,84 +375,6 @@ class AE_CSNMF_VQ_only(nn.Module):
             self_state[name].copy_(param)
 
 
-class PR_Model(nn.Module):
-    def __init__(self, **args):
-        super().__init__()
-        self.pr_mel = args['pr_mel']
-        self.pr_ema = args['pr_ema']
-        self.pr_mel = args['pr_mel']
-        #self.num_phns = args['num_phns']
-        self.num_phns = 43 #if with blank else 42
-        
-        
-        if self.pr_mel:
-            self.in_channels = 80
-        elif self.pr_ema:
-            self.in_channels = 12
 
-        self.hidden_size = 512
-        self.cnn_encoder1 = nn.Conv1d(in_channels=self.in_channels,out_channels=self.hidden_size // 2,kernel_size=3, padding=1, stride=1, bias=True)
-        self.bn1 = nn.BatchNorm1d(self.hidden_size // 2)
-        self.elu1 = nn.ELU()
-        self.cnn_encoder2 = nn.Conv1d(in_channels=self.hidden_size // 2,out_channels=self.hidden_size,kernel_size=3, padding=1, stride=1, bias=True)
-        self.bn2 = nn.BatchNorm1d(self.hidden_size)
-        self.elu2 = nn.ELU()        
-
-        self.lstm_encoder = nn.LSTM(
-            input_size=self.hidden_size, #256
-            hidden_size=self.hidden_size,
-            num_layers=3,
-            bidirectional=True,
-            dropout=0.1
-        )
-
-        self.linear_encoder = nn.Linear(2*self.hidden_size, self.num_phns)
-        self.init_parameters()
-        
-    def init_parameters(self):      
-        
-        #init_cnn
-        nn.init.kaiming_normal_(self.cnn_encoder1.weight.data)
-        nn.init.normal_(self.cnn_encoder1.bias.data)
-        nn.init.kaiming_normal_(self.cnn_encoder2.weight.data)
-        nn.init.normal_(self.cnn_encoder2.bias.data)
-        
-        #init_bn
-        self.bn1.weight.data.normal_(1.0, 0.02)
-        self.bn2.weight.data.normal_(1.0, 0.02)
-        
-        #init_lstm
-        #from weight_drop import WeightDrop
-        #weight_names = [name for name, param in self.lstm.named_parameters() if 'weight' in name]
-        #self.lstm = WeightDrop(self.lstm, weight_names, dropout=0.2)
-                
-        #init_linear
-#         nn.init.kaiming_normal_(self.linear_encoder.weight.data)
-#         nn.init.normal_(self.linear_encoder.bias.data) 
-
-
-    def forward(self, inp_utter, inp_utter_len):
-
-        #inp_utter: [B, T, D]
-
-        x = self.cnn_encoder1(inp_utter.permute(0,2,1))  #[B, D, T]
-        x = self.bn1(x)
-        x = self.elu1(x)
-        x = self.cnn_encoder2(x)
-        x = self.bn2(x)
-        x = self.elu2(x)
-        x = x.permute(2,0,1) #[B, T, D]
-        
-        #lstm
-        packed_x = pack_padded_sequence(x, inp_utter_len.cpu(), enforce_sorted=False) #X: [max_utterance, batch_size, frame_size]
-        packed_out = self.lstm_encoder(packed_x)[0]
-        out, out_lens = pad_packed_sequence(packed_out) # out: [max_utterance, batch_size, frame_size]
-
-        # Log softmax after output layer is required since`nn.CTCLoss` expects log probabilities.
-        #out = self.transformer(out)
-        p_out = self.linear_encoder(out).softmax(2)
-        log_p_out = self.linear_encoder(out).log_softmax(2)
-
-        return log_p_out, p_out, out_lens
 
     
