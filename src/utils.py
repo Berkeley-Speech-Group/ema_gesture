@@ -185,10 +185,11 @@ def vis_kinematics(model, **args):
     ######################################
     ############Reconstruction
     ######################################
-    if not args['vq']:
-        ema_ori, ema_hat,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    if args['pr_joint']:
+        ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
     else:
-        ema_ori, ema_hat,_,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device)) 
+        ema_ori, ema_hat,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+
     ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
 
     draw_kinematics(ema_data, ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
@@ -205,8 +206,7 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
     outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
     for i in range(6):
-        inner = gridspec.GridSpecFromSubplotSpec(2, 1,
-                        subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+        inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
             _data = ema_data[:,i*2+j] #shape is (win_size,)
@@ -229,6 +229,7 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
             ax.yaxis.set_label_coords(-0.05,0.5)
     plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
     plt.clf()
+    
 
 def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     
@@ -236,7 +237,6 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     #fig.suptitle(title,fontsize=20)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
-
     means = []
     stds = []
     stats_path = os.path.join(os.path.join('emadata', 'cin_us_'+args['spk_id']), 'ema.stats')
@@ -264,7 +264,6 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     data_x_6 = ema_data[:,5*2] * stds[10] + means[10]
     data_y_6 = ema_data[:,5*2+1] * stds[11] + means[11]
 
-    #plt.plot(data_x_1, data_y_1, label='tongue dorsum')
 
     indices_new = 2 * np.arange((len(data_x_1) // 2) + 1)
     data_x_1 = data_x_1[indices_new]
@@ -308,6 +307,6 @@ def vis_gestures(model, **args):
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
-        draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
+        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
+        draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
     
