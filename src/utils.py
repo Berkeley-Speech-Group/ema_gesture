@@ -201,19 +201,23 @@ def vis_kinematics(model, **args):
     else:
         ema_ori, ema_hat,_,_,_,_,_ = model(ema_data, None)
 
-    ema_data_hat = ema_hat.cpu().detach().numpy()
+    ema_data_hat = ema_hat.transpose(-1, -2).cpu().detach().numpy()
     
-    print(ema_data_hat)
-    
-
     draw_kinematics(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
 
 def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
+    
 
+    ema_data = ema_data.squeeze(0)
+    if mode == 'kinematics':
+        ema_data_hat = ema_data_hat.squeeze(0)
+    
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
+
     
     x = np.arange(ema_data.shape[0])
+
     fig = plt.figure(figsize=(18, 8))
     fig.suptitle(text_trans,fontsize=20)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
@@ -321,6 +325,7 @@ def vis_gestures(model, **args):
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
+        
+        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
         draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
     
