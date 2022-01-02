@@ -74,8 +74,11 @@ def eval_pr(model, ema_dataloader_test, device, **args):
         model.eval()
         if args['pr_mel']:
             log_p_out, p_out, out_lens = model(mel_batch, mel_len_batch) 
-        elif args['pr_ema']:
-            log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch) 
+        elif args['pr_ema'] or args['pr_joint']:
+            if args['resynthesis']:
+                x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch)
+            else:
+                log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch) 
         else:
             print("Error!! No Training Task Specified!")
             exit()
@@ -141,6 +144,7 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
             ctc_loss_e = []
 
         for i, (ema_batch, mel_batch, ema_len_batch, mel_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
+            
             ema_batch = ema_batch.to(device)
             ema_len_batch = ema_len_batch.to(device)
             mel_batch = mel_batch.to(device)
@@ -203,6 +207,8 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
         if (e+1) % args['eval_epoch'] == 0:
             ####start evaluation
             eval_resynthesis(model, ema_dataloader_test, device, **args)
+            if args['pr_joint']:
+                eval_pr(model, ema_dataloader_test, device, **args)
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs
