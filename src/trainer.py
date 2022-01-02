@@ -9,6 +9,9 @@ from config import PHONEME_LIST, PHONEME_LIST_WITH_BLANK, PHONEME_MAP
 import Levenshtein
 
 def eval_resynthesis(model, ema_dataloader_test, device, **args):
+
+    if args['pr_joint']:
+        criterion = nn.CTCLoss(blank=42, zero_infinity=True)
     print("###################################################")
     print("###########Start EValuating########################")
     print("###################################################")
@@ -16,23 +19,32 @@ def eval_resynthesis(model, ema_dataloader_test, device, **args):
     sparsity_c_e = []
     sparsity_t_e = []
     loss_vq_e = []
-    for i, ema in enumerate(ema_dataloader_test):
-        #ema.shape #[batch_size,segment_len,num_pellets]
-        ema = ema.to(device)
+    loss_ctc_e = []
+    for i, (ema_batch, mel_batch, ema_len_batch, mel_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
+        ema_batch = ema_batch.to(device)
+        ema_len_batch = ema_len_batch.to(device)
+        mel_batch = mel_batch.to(device)
+        mel_len_batch = mel_len_batch.to(device)
+        lab_batch = lab_batch.to(device)
+        lab_len_batch = lab_len_batch.to(device)
         model.eval()
-        if args['vq']:
-            inp, inp_hat, _, sparsity_c, sparsity_t, entropy_t,_,loss_vq = model(ema)
+        if args['pr_joint']:
+            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
         else:
-            inp, inp_hat, _, sparsity_c, sparsity_t, entropy_t,_ = model(ema)
+            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_batch, None)
+            
+        if args['pr_joint']:
+            loss_ctc = criterion(log_p_out, lab_batch, out_lens, lab_len_batch)
+            
         rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
         rec_loss_e.append(rec_loss.item())
         sparsity_c_e.append(float(sparsity_c))  
         sparsity_t_e.append(float(sparsity_t))  
+        if args['pr_joint']:
+            loss_ctc_e.append(loss_ctc.item())
          
-        if args['vq']:
-            loss_vq_e.append(float(loss_vq)) 
-    if args['vq']:
-        print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f, Loss_vq is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e), sum(loss_vq_e)/len(loss_vq_e)))
+    if args['pr_joint']:
+        print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f, loss_ctc is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e), sum(loss_ctc_e)/len(loss_ctc_e)))
     else:
         print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
 
@@ -139,9 +151,9 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
             model.train()
             optimizer.zero_grad()
             if args['pr_joint']:
-                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch)
+                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
             else:
-                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_batch)
+                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_batch, None)
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss = args['rec_factor']*rec_loss
 
@@ -174,13 +186,14 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
             rec_loss_e.append(rec_loss.item())
             sparsity_c_e.append(float(sparsity_c))
             sparsity_t_e.append(float(sparsity_t))
-            ctc_loss_e.append(float(loss_ctc))
+            if args['pr_joint']:
+                ctc_loss_e.append(float(loss_ctc))
             writer.add_scalar('Rec_Loss_train', rec_loss.item(), count)
             writer.add_scalar('Sparsity_H_c_train', sparsity_c, count)
             writer.add_scalar('Sparsity_H_t_train', sparsity_t, count)
             count += 1
         if args['pr_joint']:
-            print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f, CTC_loss" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e), len(ctc_loss_e) / len(ctc_loss_e)))
+            print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f, CTC_loss is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e), sum(ctc_loss_e)/len(ctc_loss_e)))
         else:
             print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
         

@@ -83,17 +83,15 @@ if __name__ == "__main__":
     training_size = len(ema_dataset_train)
 
     if args.fixed_length:
+        print("Fixed Length")
         ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True)
         ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False)
     else:
+        print("No Fixed Length")
         ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
         ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)    
 
-    if args.vq:
-        model = AE_CSNMF_VQ(**vars(args)).to(device)
-    elif args.vq_only:
-        model = AE_CSNMF_VQ_only(**vars(args)).to(device) 
-    elif args.pr_ema or args.pr_mel or args.pr_h:
+    if args.pr_ema or args.pr_mel or args.pr_h:
         model = PR_Model(**vars(args)).to(device)
     elif args.resynthesis:
         model = AE_CSNMF2(**vars(args)).to(device)

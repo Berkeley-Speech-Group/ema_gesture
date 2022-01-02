@@ -111,6 +111,7 @@ class AE_CSNMF2(nn.Module):
         self.sparse_c_base = args['sparse_c_base']
         self.sparse_t_base = args['sparse_t_base']
         self.pr_joint = args['pr_joint']
+        self.fixed_length = args['fixed_length']
 
         ######Apply weights of k-means to gestures
         if self.num_gestures == 20:
@@ -130,8 +131,9 @@ class AE_CSNMF2(nn.Module):
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
 
-    def forward(self, x):
+    def forward(self, x, ema_inp_lens):
         #shape of x is [B,t,A]
+
         time_steps = x.shape[1]
         x = x.transpose(-1, -2) #[B, A, t]
         H = F.relu(self.conv_encoder1(x)) #[B, C, t]
@@ -142,11 +144,13 @@ class AE_CSNMF2(nn.Module):
         #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
         H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
         if self.pr_joint:
-            B = H.shape[0]
-            t = H.shape[2]
-            inp_utter_lens = torch.ones(B) * t
-            log_p_out, p_out, out_lens = self.pr_model(H.permute(0,2,1), inp_utter_lens)
-
+            if not self.fixed_length:
+                log_p_out, p_out, out_lens = self.pr_model(H.permute(0,2,1), ema_inp_lens)
+            else:
+                B = H.shape[0]
+                t = H.shape[2]
+                inp_utter_lens = torch.ones(B) * t
+                log_p_out, p_out, out_lens = self.pr_model(H.permute(0,2,1), inp_utter_lens)
         latent_H = H
         sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
