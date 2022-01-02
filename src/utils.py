@@ -143,13 +143,19 @@ def get_sparsity(H):
 def vis_H(model, **args):
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    if args['vq']:
-        ema_ori, ema_hat, latent_H, _, _,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+    ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
+    B = ema_data.shape[0]
+    T = ema_data.shape[1]
+    ema_len_batch = (torch.ones(B) * T).to(device)
+    
+    if args['pr_joint']:
+        
+        ema_ori, ema_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
-        ema_ori, ema_hat, latent_H, _, _,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+        ema_ori, ema_hat, latent_H, _, _, _, _ = model(ema_data, None)
     #print(latent_H.shape) #[1,1,num_gestures, t]
 
-    latent_H = latent_H.squeeze().squeeze().detach().numpy() #[num_gesturs, t]
+    latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
     fig = plt.figure(figsize=(10, 10))
     ax = plt.gca()
     im = ax.imshow(latent_H, cmap='hot', interpolation='nearest')
@@ -185,14 +191,22 @@ def vis_kinematics(model, **args):
     ######################################
     ############Reconstruction
     ######################################
+    ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
+    B = ema_data.shape[0]
+    T = ema_data.shape[1]
+    ema_len_batch = (torch.ones(B) * T).to(device)
+    
     if args['pr_joint']:
-        ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
+        ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
-        ema_ori, ema_hat,_,_,_,_,_ = model(torch.FloatTensor(ema_data).unsqueeze(0).to(device))
+        ema_ori, ema_hat,_,_,_,_,_ = model(ema_data, None)
 
-    ema_data_hat = ema_hat.squeeze(0).transpose(0,1).detach().numpy()
+    ema_data_hat = ema_hat.cpu().detach().numpy()
+    
+    print(ema_data_hat)
+    
 
-    draw_kinematics(ema_data, ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
+    draw_kinematics(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
 
 def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):

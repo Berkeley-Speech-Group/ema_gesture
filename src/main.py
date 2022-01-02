@@ -120,8 +120,8 @@ if __name__ == "__main__":
             model.loadParameters(args.model_path)
 
     if args.vis_gestures:
-        #vis_kinematics(model, **vars(args))
-        #vis_H(model, **vars(args))
+        vis_kinematics(model, **vars(args))
+        vis_H(model, **vars(args))
         vis_gestures(model, **vars(args))
         exit()
 
