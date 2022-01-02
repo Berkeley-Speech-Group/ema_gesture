@@ -130,6 +130,11 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
 
         for i, (ema_batch, mel_batch, ema_len_batch, mel_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
             ema_batch = ema_batch.to(device)
+            ema_len_batch = ema_len_batch.to(device)
+            mel_batch = mel_batch.to(device)
+            mel_len_batch = mel_len_batch.to(device)
+            lab_batch = lab_batch.to(device)
+            lab_len_batch = lab_len_batch.to(device)
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             model.train()
             optimizer.zero_grad()
@@ -201,47 +206,6 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
         if args['pr_joint']:
             f.write("CTC_loss is %.4f\n"%(sum(ctc_loss_e)/len(ctc_loss_e)))
 
-def trainer_vq_only(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **args):
-
-    #Write into logs
-    if not os.path.exists(args['save_path']):
-        os.makedirs(args['save_path'])
-    log_path = os.path.join(args['save_path'], "logs.txt")
-    f = open(log_path, 'w')
-    os.chmod(log_path, 755)
-    f.write(args['save_path'] + '\n')
-    f.write("Process is " + str(os.getppid()))
-
-    writer = SummaryWriter()
-    count = 0
-    for e in range(args['num_epochs']):
-        loss_vq_e = []
-        for i, ema in enumerate(ema_dataloader_train):
-            #ema.shape #[batch_size,segment_len,num_pellets]
-            ema = ema.to(device)
-            sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
-            model.train()
-            optimizer.zero_grad()
-            loss = model(ema)
-            loss_vq_e.append(loss.item())
-            #loss.backward()
-            #optimizer.step()
-            sys.stdout.write("loss_vq=%.4f " %(loss.item()))
-            count += 1
-        lr_scheduler.step(loss.item())
-        #if (e+1) % args['eval_epoch'] == 0:
-        #    eval_model(model, ema_dataloader_test, **args)
-        print("|Epoch: %d loss_vq is %.4f" %(e, sum(loss_vq_e)/len(loss_vq_e)))
-
-        torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
-        #save the model every 10 epochs
-        if (e + 1) % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
-
-        #write into log after each epoch
-        f.write("***************************************************************************")
-        f.write("epoch: %d \n" %(e))
-
 def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **args):
 
     criterion = nn.CTCLoss(blank=42, zero_infinity=True)
@@ -300,8 +264,6 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             sys.stdout.write("ctc_loss=%.4f" %(loss.item()))
 
         print("|Epoch: %d Avg CTCLoss is %.4f" %(e, sum(ctc_loss_e)/len(ctc_loss_e)))
-        
-
         
         if (e+1) % args['step_size'] == 0:
             lr_scheduler.step()

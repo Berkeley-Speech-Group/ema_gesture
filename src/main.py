@@ -11,8 +11,8 @@ import torch.nn.functional as F
 # from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset, collate
-from models.csnmf import AE_CSNMF_VQ, AE_CSNMF_VQ_only,AE_CSNMF, AE_CSNMF2, PR_Model
-from trainer import trainer_resynthesis, trainer_pr, trainer_vq_only, eval_resynthesis, eval_pr
+from models.csnmf import AE_CSNMF2, PR_Model
+from trainer import trainer_resynthesis, trainer_pr, eval_resynthesis, eval_pr
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
@@ -134,8 +134,6 @@ if __name__ == "__main__":
 
     if args.pr_mel or args.pr_ema:
         trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
-    elif args.vq_only:
-        trainer_vq_only(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
     elif args.resynthesis:
         trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
     else:
