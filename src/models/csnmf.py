@@ -22,7 +22,7 @@ class PR_Model(nn.Module):
         if self.pr_mel:
             self.in_channels = 80
         elif self.pr_stft:
-            self.in_channels = 200
+            self.in_channels = 201
         elif self.pr_ema:
             self.in_channels = 12
         elif self.pr_joint:

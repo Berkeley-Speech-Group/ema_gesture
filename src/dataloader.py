@@ -112,7 +112,7 @@ class EMA_Dataset:
         wav_path = self.wav_paths[index]
         wav_data = loadWAV(wav_path) #[1, num_points]
         mel_data = wav2mel(wav_data) #[T_mel, 80]
-        stft_data = wav2stft(wav_data) #[T_stft, 80]
+        stft_data = wav2stft(wav_data) #[T_stft, 201]
         ema_npy_path = self.ema_npy_paths[index]
         lab_npy_path = self.lab_npy_paths[index]
         ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema_real, 12]
@@ -131,6 +131,7 @@ class EMA_Dataset:
                     ema_data = ema_data[start_point:start_point+self.segment_len]
                 else:
                     ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
+                    
 
         return ema_data, wav_data, mel_data, stft_data, lab_data_unique
 
@@ -181,7 +182,7 @@ def collate(batch):
     stft_batch = torch.stack( #[B, max_mel_T, 80]
         ([
             torch.cat(
-                (stft, torch.zeros((max_stft_len - len(stft), 80))),
+                (stft, torch.zeros((max_stft_len - len(stft), 201))),
                 dim=0
             ) if len(stft) < max_stft_len else stft
             for stft in stft_batch

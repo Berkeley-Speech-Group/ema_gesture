@@ -59,7 +59,7 @@ def eval_pr(model, ema_dataloader_test, device, **args):
     ctc_loss_e = []
     edit_distance = 0.0
     count_edit = 0
-    for i, (ema_batch, mel_batch, stft_batch, ema_len_batch, mel_len_batch, stft_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
+    for i, (ema_batch, mel_batch, stft_batch, ema_len_batch, mel_len_batch, stft_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
         ema_batch = ema_batch.to(device)
         ema_len_batch = ema_len_batch.to(device)
         mel_batch = mel_batch.to(device)
