@@ -14,12 +14,15 @@ class PR_Model(nn.Module):
     def __init__(self, **args):
         super().__init__()
         self.pr_mel = args['pr_mel']
+        self.pr_stft = args['pr_stft']
         self.pr_ema = args['pr_ema']
         self.num_phns = 43 #if with blank else 42
         self.pr_joint = args['pr_joint']
         
         if self.pr_mel:
             self.in_channels = 80
+        elif self.pr_stft:
+            self.in_channels = 200
         elif self.pr_ema:
             self.in_channels = 12
         elif self.pr_joint:

@@ -57,6 +57,12 @@ def wav2mel(wav):
     mel_spec = torch.FloatTensor(S) #shape should be [T, 80]
     return mel_spec
 
+def wav2stft(wav):
+    #input size of wav should be [1, length]
+    stft = torch.stft(wav, n_fft=400, hop_length=160, win_length=400, center=False, window=torch.hann_window(400))
+    stft = (stft[:,:,:,0].pow(2)+stft[:,:,:,1].pow(2)).pow(0.5*1) #[1, D, T]
+    return stft.squeeze(0).transpose(0,1)
+
 
 def draw_mel2(wav=None, mode=None, title=None):
     y, sr = librosa.load(wav) #y:[21969, ]
