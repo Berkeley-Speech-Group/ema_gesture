@@ -126,10 +126,25 @@ def eval_pr(model, ema_dataloader_test, device, **args):
         for m in range(cur_batch_size):
             edit_distance += Levenshtein.distance(res_str[m], label_str[m])
             count_edit += 1
+            
+        torch.cuda.empty_cache()
+        del ema_batch
+        del ema_len_batch
+        del mel_batch
+        del stft_batch
+        del mfcc_batch
+        del wav2vec2_batch
+        del mel_len_batch 
+        del stft_len_batch
+        del mfcc_len_batch 
+        del wav2vec2_len_batch
+        del lab_batch 
+        del lab_len_batch 
 
     sys.stdout.write("Eval CTC_loss=%.4f\n" %(loss.item()))
 
     print("PER is: ", edit_distance / count_edit)
+    return edit_distance / count_edit
 
 
 
@@ -264,7 +279,8 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
     for e in range(args['num_epochs']):
         print("PID is {}".format(os.getppid()))
         if (e+1) % args['eval_epoch'] == 0:
-            eval_pr(model, ema_dataloader_test, device, **args)
+            per = eval_pr(model, ema_dataloader_test, device, **args)
+            lr_scheduler.step(per)
 
         ctc_loss_e = []
         for i, (ema_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, mfcc_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
@@ -308,11 +324,25 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             count += 1
 
             sys.stdout.write("ctc_loss=%.4f" %(loss.item()))
-
+            
+            torch.cuda.empty_cache()
+            
+            del ema_batch
+            del ema_len_batch
+            del mel_batch
+            del stft_batch
+            del mfcc_batch
+            del wav2vec2_batch
+            del mel_len_batch 
+            del stft_len_batch
+            del mfcc_len_batch 
+            del wav2vec2_len_batch
+            del lab_batch 
+            del lab_len_batch 
         print("|Epoch: %d Avg CTCLoss is %.4f" %(e, sum(ctc_loss_e)/len(ctc_loss_e)))
         
-        if (e+1) % args['step_size'] == 0:
-            lr_scheduler.step()
+#         if (e+1) % args['step_size'] == 0:
+#             lr_scheduler.step()
         #lr_scheduler.step(loss.item())
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
