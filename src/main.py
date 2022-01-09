@@ -27,7 +27,7 @@ parser.add_argument('--win_size', type=int, default=41, help='')
 parser.add_argument('--segment_len', type=int, default=100, help='')
 parser.add_argument('--num_epochs', type=int, default=500, help='')
 parser.add_argument('--learning_rate', type=float, default=1e-3, help='')
-parser.add_argument('--weight_decay', type=float, default=1e-4, help='')
+parser.add_argument('--weight_decay', type=float, default=0.005, help='')
 parser.add_argument('--model_path', type=str, default='', help='')
 parser.add_argument('--save_path', type=str, default='save_models/test', help='')
 parser.add_argument('--test_ema_path', type=str, default='', help='')
@@ -59,6 +59,7 @@ parser.add_argument('--with_phoneme', action='store_true', help='')
 parser.add_argument('--fixed_length', action='store_true', help='')
 parser.add_argument('--pr_mel', action='store_true', help='')
 parser.add_argument('--pr_stft', action='store_true', help='')
+parser.add_argument('--pr_mfcc', action='store_true', help='')
 parser.add_argument('--pr_wav2vec2', action='store_true', help='')
 parser.add_argument('--pr_ema', action='store_true', help='')
 parser.add_argument('--pr_h', action='store_true', help='')
@@ -94,7 +95,7 @@ if __name__ == "__main__":
         ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
         ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)    
 
-    if args.pr_ema or args.pr_mel or args.pr_stft or args.pr_h:
+    if args.pr_ema or args.pr_mel or args.pr_stft or args.pr_h or args.pr_wav2vec2 or args.pr_mfcc:
         model = PR_Model(**vars(args)).to(device)
     elif args.resynthesis:
         model = AE_CSNMF2(**vars(args)).to(device)
@@ -133,7 +134,7 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.9)
     #lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=3, threshold=0.0001)
 
-    if args.pr_mel or args.pr_ema or args.pr_stft:
+    if args.pr_mel or args.pr_ema or args.pr_stft or args.pr_wav2vec2 or args.pr_mfcc:
         trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
     elif args.resynthesis:
         trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))

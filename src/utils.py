@@ -63,6 +63,12 @@ def wav2stft(wav):
     stft = (stft[:,:,:,0].pow(2)+stft[:,:,:,1].pow(2)).pow(0.5*1) #[1, D, T]
     return stft.squeeze(0).transpose(0,1)
 
+def wav2mfcc(wav):
+    #input size of wav should be [1, length]
+    mfcc = torchaudio.transforms.MFCC(n_mfcc=39)
+    mfcc_data = mfcc(wav).squeeze(0).transpose(0,1)
+    return mfcc_data
+
 
 def draw_mel2(wav=None, mode=None, title=None):
     y, sr = librosa.load(wav) #y:[21969, ]

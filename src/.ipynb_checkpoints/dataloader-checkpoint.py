@@ -5,7 +5,7 @@ import numpy as np
 import random
 import os
 import sys
-from utils import wav2mel, wav2stft
+from utils import wav2mel, wav2stft, wav2mfcc
 
 
 def loadWAV(filename, max_points=32000):
@@ -114,7 +114,9 @@ class EMA_Dataset:
         wav_data = loadWAV(wav_path) #[1, num_points]
         mel_data = wav2mel(wav_data) #[T_mel, 80]
         stft_data = wav2stft(wav_data) #[T_stft, 201]
-        wav2vec2 = wav2vec2(wav_data)
+        mfcc_data = wav2mfcc(wav_data) #[T_mfcc, 201]
+        #wav2vec2 = wav2vec2(wav_data)
+        wav2vec2 = torch.zeros_like(stft_data)
         ema_npy_path = self.ema_npy_paths[index]
         lab_npy_path = self.lab_npy_paths[index]
         ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema_real, 12]
@@ -134,12 +136,12 @@ class EMA_Dataset:
                 else:
                     ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
 
-        return ema_data, wav_data, mel_data, stft_data, wav2vec2, lab_data_unique
+        return ema_data, wav_data, mel_data, stft_data, mfcc_data, wav2vec2, lab_data_unique
 
 
 def collate(batch):
 
-    ema_batch, wav_batch, mel_batch, stft_batch, lab_batch = zip(*batch)
+    ema_batch, wav_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, lab_batch = zip(*batch)
 
     #ema_batch [B, T_ema(variable), 12], actually it is list
     #wav_batch, [B, 1, num_points(variable)], actually it is list
@@ -189,6 +191,38 @@ def collate(batch):
             for stft in stft_batch
         ]), dim=0
     )
+    
+    
+    mfcc_len_batch = torch.IntTensor(
+        [len(mfcc) for mfcc in mfcc_batch]
+    )
+
+    max_mfcc_len = torch.max(mfcc_len_batch)
+    mfcc_batch = torch.stack( #[B, max_mel_T, 80]
+        ([
+            torch.cat(
+                (mfcc, torch.zeros((max_mfcc_len - len(mfcc), 39))),
+                dim=0
+            ) if len(mfcc) < max_mfcc_len else mfcc
+            for mfcc in mfcc_batch
+        ]), dim=0
+    )
+    
+    
+    wav2vec2_len_batch = torch.IntTensor(
+        [len(wav2vec2) for wav2vec2 in wav2vec2_batch]
+    )
+
+    max_wav2vec2_len = torch.max(wav2vec2_len_batch)
+    wav2vec2_batch = torch.stack( #[B, max_mel_T, 80]
+        ([
+            torch.cat(
+                (wav2vec2, torch.zeros((max_wav2vec2_len - len(wav2vec2), 201))),
+                dim=0
+            ) if len(wav2vec2) < max_wav2vec2_len else wav2vec2
+            for wav2vec2 in wav2vec2_batch
+        ]), dim=0
+    )
 
     lab_len_batch = torch.IntTensor(
         [len(lab_seq) for lab_seq in lab_batch]
@@ -209,9 +243,13 @@ def collate(batch):
         ema_batch,
         mel_batch, 
         stft_batch,
+        mfcc_batch,
+        wav2vec2_batch,
         ema_len_batch,
         mel_len_batch, 
         stft_len_batch,
+        mfcc_len_batch,
+        wav2vec2_len_batch,
         lab_batch,
         lab_len_batch
     )

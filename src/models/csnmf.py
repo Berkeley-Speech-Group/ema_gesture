@@ -15,6 +15,7 @@ class PR_Model(nn.Module):
         super().__init__()
         self.pr_mel = args['pr_mel']
         self.pr_stft = args['pr_stft']
+        self.pr_mfcc = args['pr_mfcc']
         self.pr_wav2vec2 = args['pr_wav2vec2']
         self.pr_ema = args['pr_ema']
         self.num_phns = 43 #if with blank else 42
@@ -24,6 +25,8 @@ class PR_Model(nn.Module):
             self.in_channels = 80
         elif self.pr_stft:
             self.in_channels = 201
+        elif self.pr_mfcc:
+            self.in_channels = 39
         elif self.pr_wav2vec2:
             self.in_channels = 201
         elif self.pr_ema:
@@ -33,6 +36,7 @@ class PR_Model(nn.Module):
         else:
             print("Error!! No ")
 
+            
         self.hidden_size = 512
         self.cnn_encoder1 = nn.Conv1d(in_channels=self.in_channels,out_channels=self.hidden_size // 2,kernel_size=3, padding=1, stride=1, bias=True)
         self.bn1 = nn.BatchNorm1d(self.hidden_size // 2)
