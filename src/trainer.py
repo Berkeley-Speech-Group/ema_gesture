@@ -153,6 +153,7 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
         rec_loss_e = []
         sparsity_c_e = []
         sparsity_t_e = []
+        print("PID is {}".format(os.getppid()))
         if args['pr_joint']:
             ctc_loss_e = []
 
@@ -261,6 +262,7 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
     writer = SummaryWriter()
     count = 0
     for e in range(args['num_epochs']):
+        print("PID is {}".format(os.getppid()))
         if (e+1) % args['eval_epoch'] == 0:
             eval_pr(model, ema_dataloader_test, device, **args)
 
