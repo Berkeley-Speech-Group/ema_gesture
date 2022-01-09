@@ -20,17 +20,20 @@ def eval_resynthesis(model, ema_dataloader_test, device, **args):
     sparsity_t_e = []
     loss_vq_e = []
     loss_ctc_e = []
-    for i, (ema_batch, mel_batch, stft_batch, ema_len_batch, mel_len_batch, stft_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
+    for i, (ema_batch, mel_batch, stft_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
         
         ema_batch = ema_batch.to(device)
         ema_len_batch = ema_len_batch.to(device)
         mel_batch = mel_batch.to(device)
         stft_batch = stft_batch.to(device)
+        wav2vec2_batch = wav2vec2_batch.to(device)
         mel_len_batch = mel_len_batch.to(device)
         stft_len_batch = stft_len_batch.to(device)
+        wav2vec2_len_batch = wav2vec2_len_batch.to(device)
         lab_batch = lab_batch.to(device)
         lab_len_batch = lab_len_batch.to(device)
         model.eval()
+        
         if args['pr_joint']:
             inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
         else:
@@ -59,13 +62,16 @@ def eval_pr(model, ema_dataloader_test, device, **args):
     ctc_loss_e = []
     edit_distance = 0.0
     count_edit = 0
-    for i, (ema_batch, mel_batch, stft_batch, ema_len_batch, mel_len_batch, stft_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
+    for i, (ema_batch, mel_batch, stft_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
+        
         ema_batch = ema_batch.to(device)
         ema_len_batch = ema_len_batch.to(device)
         mel_batch = mel_batch.to(device)
         stft_batch = stft_batch.to(device)
+        wav2vec2_batch = wav2vec2_batch.to(device)
         mel_len_batch = mel_len_batch.to(device)
         stft_len_batch = stft_len_batch.to(device)
+        wav2vec2_len_batch = wav2vec2_len_batch.to(device)
         lab_batch = lab_batch.to(device)
         lab_len_batch = lab_len_batch.to(device)
         model.eval()
@@ -73,6 +79,8 @@ def eval_pr(model, ema_dataloader_test, device, **args):
             log_p_out, p_out, out_lens = model(mel_batch, mel_len_batch)
         elif args['pr_stft']:
             log_p_out, p_out, out_lens = model(stft_batch, stft_len_batch)  
+        elif args['pr_wav2vec2']:
+            log_p_out, p_out, out_lens = model(wav2vec2_batch, wav2vec2_len_batch)
         elif args['pr_ema'] or args['pr_joint']:
             if args['resynthesis']:
                 x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch)
@@ -142,19 +150,22 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
         if args['pr_joint']:
             ctc_loss_e = []
 
-        for i, (ema_batch, mel_batch, stft_batch, ema_len_batch, mel_len_batch, stft_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
-            
+        for i, (ema_batch, mel_batch, stft_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
+
             ema_batch = ema_batch.to(device)
             ema_len_batch = ema_len_batch.to(device)
             mel_batch = mel_batch.to(device)
             stft_batch = stft_batch.to(device)
+            wav2vec2_batch = wav2vec2_batch.to(device)
             mel_len_batch = mel_len_batch.to(device)
             stft_len_batch = stft_len_batch.to(device)
+            wav2vec2_len_batch = wav2vec2_len_batch.to(device)
             lab_batch = lab_batch.to(device)
             lab_len_batch = lab_len_batch.to(device)
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             model.train()
             optimizer.zero_grad()
+            
             if args['pr_joint']:
                 inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
             else:
@@ -263,6 +274,8 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             if args['pr_mel']:
                 log_p_out, p_out, out_lens = model(mel_batch, mel_len_batch)
             elif args['pr_stft']:
+                log_p_out, p_out, out_lens = model(stft_batch, stft_len_batch)
+            elif args['pr_wav2vec2']:
                 log_p_out, p_out, out_lens = model(stft_batch, stft_len_batch)
             elif args['pr_ema']:
                 log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch) 

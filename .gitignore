@@ -7,3 +7,4 @@ _pycache_
 src/_*
 src/models/_*
 src/.ipynb*
+wav2vec_small_960h.pt

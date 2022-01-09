@@ -101,6 +101,7 @@ class EMA_Dataset:
         with open("emadata/"+self.mode+"_metalist.txt", 'w') as f:
             for ema_npy_path in self.ema_npy_paths:
                 f.write(ema_npy_path+'\n')
+                         
 
         print("##################################################################################")
         print("Extract Phoneme Labels(Not Alignment)")
@@ -113,6 +114,7 @@ class EMA_Dataset:
         wav_data = loadWAV(wav_path) #[1, num_points]
         mel_data = wav2mel(wav_data) #[T_mel, 80]
         stft_data = wav2stft(wav_data) #[T_stft, 201]
+        wav2vec2 = wav2vec2(wav_data)
         ema_npy_path = self.ema_npy_paths[index]
         lab_npy_path = self.lab_npy_paths[index]
         ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema_real, 12]
@@ -131,9 +133,8 @@ class EMA_Dataset:
                     ema_data = ema_data[start_point:start_point+self.segment_len]
                 else:
                     ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
-                    
 
-        return ema_data, wav_data, mel_data, stft_data, lab_data_unique
+        return ema_data, wav_data, mel_data, stft_data, wav2vec2, lab_data_unique
 
 
 def collate(batch):

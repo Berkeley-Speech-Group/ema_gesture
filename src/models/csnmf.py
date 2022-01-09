@@ -15,6 +15,7 @@ class PR_Model(nn.Module):
         super().__init__()
         self.pr_mel = args['pr_mel']
         self.pr_stft = args['pr_stft']
+        self.pr_wav2vec2 = args['pr_wav2vec2']
         self.pr_ema = args['pr_ema']
         self.num_phns = 43 #if with blank else 42
         self.pr_joint = args['pr_joint']
@@ -22,6 +23,8 @@ class PR_Model(nn.Module):
         if self.pr_mel:
             self.in_channels = 80
         elif self.pr_stft:
+            self.in_channels = 201
+        elif self.pr_wav2vec2:
             self.in_channels = 201
         elif self.pr_ema:
             self.in_channels = 12
