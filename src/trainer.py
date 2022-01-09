@@ -140,11 +140,13 @@ def eval_pr(model, ema_dataloader_test, device, **args):
         del wav2vec2_len_batch
         del lab_batch 
         del lab_len_batch 
+        
+    ctc_loss = sum(ctc_loss_e)/len(ctc_loss_e)
 
-    sys.stdout.write("Eval CTC_loss=%.4f\n" %(loss.item()))
+    sys.stdout.write("Eval CTC_loss=%.4f\n" %(ctc_loss))
 
     print("PER is: ", edit_distance / count_edit)
-    return edit_distance / count_edit
+    return ctc_loss, edit_distance / count_edit
 
 
 
@@ -279,8 +281,8 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
     for e in range(args['num_epochs']):
         print("PID is {}".format(os.getppid()))
         if (e+1) % args['eval_epoch'] == 0:
-            per = eval_pr(model, ema_dataloader_test, device, **args)
-            lr_scheduler.step(per)
+            ctc_loss, per = eval_pr(model, ema_dataloader_test, device, **args)
+            lr_scheduler.step(ctc_loss)
 
         ctc_loss_e = []
         for i, (ema_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, mfcc_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
@@ -339,6 +341,8 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             del wav2vec2_len_batch
             del lab_batch 
             del lab_len_batch 
+            
+            #lr_scheduler.step()
         print("|Epoch: %d Avg CTCLoss is %.4f" %(e, sum(ctc_loss_e)/len(ctc_loss_e)))
         
 #         if (e+1) % args['step_size'] == 0:

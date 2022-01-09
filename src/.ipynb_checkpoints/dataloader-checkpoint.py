@@ -33,99 +33,49 @@ class EMA_Dataset:
         self.spk_id_setting = args['spk_id']
         self.mode = mode
         self.fixed_length = args['fixed_length']
-
-        print("Extract wav, nema, npy info................................../......................")
-        
-        for spk_id in os.listdir(path):
-            if not spk_id.startswith('cin'):
-                continue
-            if not self.spk_id_setting == 'all':
-                if not self.spk_id_setting in spk_id:
-                    continue
-            spk_id_path = os.path.join(path, spk_id)
-            ema_dir = os.path.join(spk_id_path, "nema")
-            wav_dir = os.path.join(spk_id_path, "wav")
-            lab_dir = os.path.join(spk_id_path, "lab")
-           
-            utter_id_set = set()
-            for ema in os.listdir(ema_dir):
-                if ema.endswith('.ema'):
-                    ema_path = os.path.join(ema_dir, ema)
-                    self.ema_paths.append(ema_path)
-                    utter_id = ema_path.split("/")[-1].split('.')[0]
-                    utter_id_set.add(utter_id)
-                if ema.endswith('.npy'):
-                    ema_npy_path = os.path.join(ema_dir, ema)
-                    self.ema_npy_paths.append(ema_npy_path)
-
-            for wav in os.listdir(wav_dir):
-                if not wav.endswith('.wav'):
-                    continue
-                wav_path = os.path.join(wav_dir, wav)
-                wav_id = wav_path.split("/")[-1].split(".")[0]
-                if wav_id not in utter_id_set:  #To make sure that redundant wavs are not included
-                    continue
-                self.wav_paths.append(wav_path)
-
-            for lab in os.listdir(lab_dir):
-                if lab.endswith('.lab'):
-                    lab_path = os.path.join(lab_dir, lab)
-                    lab_id = lab_path.split("/")[-1].split(".")[0]
-                    if lab_id not in utter_id_set:  #To make sure that redundant wavs are not included
-                        continue
-                    self.lab_paths.append(lab_path)
-
-                if lab.endswith('.npy'):
-                    lab_npy_path = os.path.join(lab_dir, lab)
-                    self.lab_npy_paths.append(lab_npy_path)
-
-        print("##################################################################################")
-        print("spk setting is ", self.spk_id_setting)
-        print("# of ema npys is ", len(self.ema_npy_paths)) #4409
-        print("# of emas is ", len(self.ema_paths)) #4409
-        print("# of wavs is ", len(self.wav_paths)) #4409 (full: 4579)
-        print("# of labs is ", len(self.lab_paths)) #4409
-        print("# of lab npys is ", len(self.lab_npy_paths)) #4409
-        
-        #random.shuffle(self.ema_npy_paths)
-        train_size = int(0.8 * len(self.ema_npy_paths))
         
         if self.mode == 'train':
-            self.ema_npy_paths = self.ema_npy_paths[:train_size]
-            self.lab_npy_paths = self.lab_npy_paths[:train_size]
+            if self.spk_id_setting == 'mngu0':
+                ema_metalist_path = 'emadata/metalist_ema_mngu0_train.txt'
+                wav_metalist_path = 'emadata/metalist_wav_mngu0_train.txt'
+                lab_metalist_path = 'emadata/metalist_lab_mngu0_train.txt'
+            elif self.spk_id_setting == 'all':
+                ema_metalist_path = 'emadata/metalist_ema_train_all.txt'
+                wav_metalist_path = 'emadata/metalist_wav_train_all.txt'
+                lab_metalist_path = 'emadata/metalist_lab_train_all.txt'
         else:
-            self.ema_npy_paths = self.ema_npy_paths[train_size:]
-            self.lab_npy_paths = self.lab_npy_paths[train_size:]
-        print(self.mode + "_ size is: ", len(self.ema_npy_paths))
+            ema_metalist_path = 'emadata/metalist_ema_mngu0_test.txt'
+            wav_metalist_path = 'emadata/metalist_wav_mngu0_test.txt'
+            lab_metalist_path = 'emadata/metalist_lab_mngu0_test.txt'
+            
+        with open(ema_metalist_path) as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                self.ema_npy_paths.append(line[:-1])
+                
+        with open(wav_metalist_path) as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                self.wav_paths.append(line[:-1])
+                
+        with open(lab_metalist_path) as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                self.lab_npy_paths.append(line[:-1])
+    
+        print("###############################all data start#############################################")
+        print("spk setting is ", self.spk_id_setting)
+        print("# of ema npys is ", len(self.ema_npy_paths)) #4409
+        print("# of wavs is ", len(self.wav_paths)) #4409 (full: 4579)
+        print("# of lab npys is ", len(self.lab_npy_paths)) #4409
+        print("###################################all data end##########################################")
 
-        with open("emadata/"+self.mode+"_"+self.spk_id_setting+"_metalist.txt", 'w') as f:
-            for ema_npy_path in self.ema_npy_paths:
-                f.write(ema_npy_path+'\n')
-        with open("emadata/"+self.mode+"_"+self.spk_id_setting+"_metalist_lab.txt", 'w') as f:
-            for lab_npy_path in self.lab_npy_paths:
-                f.write(lab_npy_path+'\n')
-    
-    
-        print("The Real Test Set to be loaded")
-        if not self.mode == 'train':
-            self.ema_npy_paths = []
-            self.lab_npy_paths = []
-            with open("emadata/test_mngu0_metalist.txt") as f:
-                while True:
-                    line = f.readline()
-                    if not line:
-                        break
-                    self.ema_npy_paths.append(line[:-1])
-            with open("emadata/test_mngu0_metalist_lab.txt") as f:
-                while True:
-                    line = f.readline()
-                    if not line:
-                        break
-                    self.lab_npy_paths.append(line[:-1])
-            print("#####Testing size (mngu0) is: ", len(self.ema_npy_paths))
-                    
-        print("##################################################################################")
-        #print("Extract Phoneme Labels(Not Alignment)")
 
     def __len__(self): #4579
         return len(self.ema_npy_paths)
