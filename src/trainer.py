@@ -157,7 +157,7 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
         if args['pr_joint']:
             ctc_loss_e = []
 
-        for i, (ema_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, mfcc_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
+        for i, (ema_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, mfcc_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
 
             ema_batch = ema_batch.to(device)
             ema_len_batch = ema_len_batch.to(device)
@@ -267,7 +267,7 @@ def trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloa
             eval_pr(model, ema_dataloader_test, device, **args)
 
         ctc_loss_e = []
-        for i, (ema_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, mfcc_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_test):
+        for i, (ema_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, mfcc_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
 
             ema_batch = ema_batch.to(device)
             ema_len_batch = ema_len_batch.to(device)
