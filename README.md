@@ -57,12 +57,42 @@ python ./src/kmeans.py
 ```
 
 
-## Train with Sparse Gestural Scores
-
+## Train Resynthesis
 
 ```
-python src/main.py --sparse_c --sparse_c_factor 0 --spk_id mngu --sparse_t --sparse_t_factor 1 --learning_rate 1e-3 --save_path save_models/sota --batch_size 8
+python src/main.py --sparse_c --sparse_c_factor 10 --spk_id mngu --sparse_t --sparse_t_factor 100 --learning_rate 1e-3 --batch_size 8 --sparse_c_base 0.90 --segment_len 350 --entropy_t --entropy_t_factor 10 --entropy_c --entropy_c_factor 1 --pr_joint --resynthesis
 ```
+
+##  Resynthesis + CTC on H joint training
+
+```
+python src/main.py --sparse_c --sparse_c_factor 10 --spk_id mngu --sparse_t --sparse_t_factor 100 --learning_rate 1e-3 --batch_size 8 --sparse_c_base 0.90 --segment_len 350 --entropy_t --entropy_t_factor 10 --entropy_c --entropy_c_factor 1 --pr_joint --resynthesis
+```
+
+##  Phoneme Recognition on Melspectrogram
+
+```
+python src/main.py --pr_mel --save_path save_models/pr_mel_bs8
+```
+
+##  Phoneme Recognition on EMA
+
+```
+python src/main.py --pr_ema --save_path save_models/pr_ema_bs8
+```
+
+##  Phoneme Recognition on MFCC
+
+```
+python src/main.py --pr_mfcc --save_path save_models/pr_mfcc_bs8
+```
+
+##  Phoneme Recognition on STFT
+
+```
+python src/main.py --pr_stft --save_path save_models/pr_stft_bs8
+```
+
 
 ## Launch Tensorboard
 
@@ -75,5 +105,5 @@ tensorboard --logdir=runs
 
 
 ```
-python src/main.py --vis_gestures --model_path save_models/sota/best169.pth --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0048.npy --spk_id mngu0 --vis_kinematics
+python src/main.py --vis_gestures --model_path save_models/test/best.pth --resynthesis --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0300.npy --spk_id mngu0
 ```
