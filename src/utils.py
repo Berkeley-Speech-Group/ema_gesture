@@ -160,24 +160,24 @@ def vis_H(model, **args):
     ema_len_batch = (torch.ones(B) * T).to(device)
     
     if args['pr_joint']:
-        
         ema_ori, ema_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
         ema_ori, ema_hat, latent_H, _, _, _, _ = model(ema_data, None)
-    #print(latent_H.shape) #[1,1,num_gestures, t]
 
     latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
-    fig = plt.figure(figsize=(10, 10))
+    
+    plt.figure(figsize=(20,15)) 
     ax = plt.gca()
-    im = ax.imshow(latent_H, cmap='hot', interpolation='nearest')
+    im = ax.imshow(latent_H, cmap='Blues', interpolation='nearest', aspect=2)
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cax = divider.append_axes("right", size="2%", pad=-4.7)
     cbar = plt.colorbar(im, cax=cax)
-    cbar.ax.tick_params(labelsize=20)
-    plt.xticks(fontsize=3)
-    plt.yticks(fontsize=10)
+    #cbar.ax.tick_params(labelsize=40)
+    cbar.set_ticks([])
+    ax.set_xticks([])
+    ax.set_yticks([])
     #plt.title(text_trans, fontsize=30)
-    plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"))
+    plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"), bbox_inches='tight')
     plt.clf()
 
     #we try to print rows that are "activated"

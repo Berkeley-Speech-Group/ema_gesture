@@ -248,6 +248,8 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
             if args['pr_joint']:
                 ctc_loss, per = eval_pr(model, ema_dataloader_test, device, **args)
                 lr_scheduler.step(ctc_loss)
+            else:
+                lr_scheduler.step(rec_loss.item())
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs
