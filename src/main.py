@@ -88,12 +88,8 @@ if __name__ == "__main__":
 
     if args.fixed_length:
         print("Fixed Length")
-        ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True)
-        ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False)
     else:
         print("No Fixed Length")
-        ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
-        ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)    
 
     if args.pr_ema or args.pr_mel or args.pr_stft or args.pr_h or args.pr_wav2vec2 or args.pr_mfcc:
         model = PR_Model(**vars(args)).to(device)
@@ -124,10 +120,14 @@ if __name__ == "__main__":
             model.loadParameters(args.model_path)
 
     if args.vis_gestures:
+        print("###################################Visualize Gestures#########################################")
         vis_kinematics(model, **vars(args))
         vis_H(model, **vars(args))
         vis_gestures(model, **vars(args))
         exit()
+        
+    ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
+    ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)    
 
     #optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=0.9)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)

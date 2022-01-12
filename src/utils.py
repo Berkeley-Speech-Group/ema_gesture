@@ -139,7 +139,6 @@ def get_sparsity(H):
     sparsity_c = (math.sqrt(vector_len_c) - H_l1_c/H_l2_c) / (math.sqrt(vector_len_c) - 1)
     sparsity_t = (math.sqrt(vector_len_t) - H_l1_t/H_l2_t) / (math.sqrt(vector_len_t) - 1)
 
-
     t_histogram = (1 - sparsity_t + 1e-5) / (1 - sparsity_t + 1e-5).sum(dim=-1, keepdim=True)
     entropy_t = (-t_histogram * torch.log(t_histogram)).mean(dim=-1).mean() #entropy is always non-negative
     #we need to increase E[-plogp] in order to increase diversity, so we just decrease E[plogp] 
@@ -338,6 +337,6 @@ def vis_gestures(model, **args):
     for i in range(args['num_gestures']):
         gesture_index = i
         
-        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
-        draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='gesture_'+str(gesture_index), **args)
+        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
     
