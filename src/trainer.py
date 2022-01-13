@@ -56,7 +56,7 @@ def eval_resynthesis(model, ema_dataloader_test, device, **args):
     else:
         print("| Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
 
-def eval_pr(model, ema_dataloader_test, device, **args):
+def _eval_pr(model, ema_dataloader_test, device, **args):
     print("###################################################")
     print("###########Start EValuating(PR)########################")
     print("###################################################")

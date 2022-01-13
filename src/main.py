@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from dataloader import EMA_Dataset, collate
 from models.csnmf import AE_CSNMF2, PR_Model
-from trainer import trainer_resynthesis, trainer_pr, eval_resynthesis, eval_pr
+from trainer import trainer_resynthesis, trainer_pr, eval_resynthesis, _eval_pr
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
@@ -71,6 +71,7 @@ parser.add_argument('--asr_h', action='store_true', help='')
 parser.add_argument('--resynthesis', action='store_true', help='')
 parser.add_argument('--vq', action='store_true', help='')
 parser.add_argument('--vq_only', action='store_true', help='to test the clustering performance')
+parser.add_argument('--eval_pr', action='store_true', help='')
 
 args = parser.parse_args()
 
@@ -128,6 +129,12 @@ if __name__ == "__main__":
         
     ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
     ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)    
+    
+    if args.eval_pr:
+        print("Eval PER:")
+        ctc_loss, per = _eval_pr(model, ema_dataloader_test, device, **vars(args))
+        print("PER is: ", per)
+        exit()
 
     if args.pr_mel or args.pr_mfcc or args.pr_joint or args.pr_stft:
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)

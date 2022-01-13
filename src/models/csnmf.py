@@ -100,6 +100,21 @@ class PR_Model(nn.Module):
         log_p_out = self.linear_encoder(out).log_softmax(2)
 
         return log_p_out, p_out, out_lens
+    
+    def loadParameters(self, path):
+        self_state = self.state_dict()
+        loaded_state = torch.load(path)
+        for name, param in loaded_state.items():
+            origname = name
+            if name not in self_state:
+                name = name.replace("module.", "")
+                if name not in self_state:
+                    print("%s is not in the model."%origname)
+                    continue
+            if self_state[name].size() != loaded_state[origname].size():
+                print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
+                continue
+            self_state[name].copy_(param)
 
 
 class AE_CSNMF2(nn.Module):
