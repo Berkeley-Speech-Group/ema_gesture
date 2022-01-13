@@ -72,6 +72,7 @@ parser.add_argument('--resynthesis', action='store_true', help='')
 parser.add_argument('--vq', action='store_true', help='')
 parser.add_argument('--vq_only', action='store_true', help='to test the clustering performance')
 parser.add_argument('--eval_pr', action='store_true', help='')
+parser.add_argument('--pr_voicing', action='store_true', help='')
 
 args = parser.parse_args()
 

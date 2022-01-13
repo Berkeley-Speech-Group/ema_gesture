@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from ctcdecode import CTCBeamDecoder
 from config import PHONEME_LIST, PHONEME_LIST_WITH_BLANK, PHONEME_MAP
+from utils import voicing_fn
 import Levenshtein
 
 def eval_resynthesis(model, ema_dataloader_test, device, **args):
@@ -124,7 +125,12 @@ def _eval_pr(model, ema_dataloader_test, device, **args):
                 label_str[m] += PHONEME_MAP[lab_batch[m][j]]
 
         for m in range(cur_batch_size):
-            edit_distance += Levenshtein.distance(res_str[m], label_str[m])
+            src = res_str[m]
+            tar = label_str[m]
+            if args['pr_voicing']:
+                src = voicing_fn(src)
+                tar = voicing_fn(src)
+            edit_distance += Levenshtein.distance(src, tar)
             count_edit += 1
             
         torch.cuda.empty_cache()

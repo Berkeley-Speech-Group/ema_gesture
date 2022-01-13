@@ -18,6 +18,38 @@ import math
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
+def voicing_fn(inp_str):
+    #voicing unvoicing
+    # p b m -> 0
+    # t d n -> 1
+    # ch jh -> 2
+    # f v -> 3
+    # sh zh -> 4
+    # k g ng -> 5
+    # s z -> 6
+    # th dh -> 7
+    
+    x = inp_str.replace('p','0')
+    x = x.replace('b','0')
+    x = x.replace('m','0')
+    x = x.replace('t','1')
+    x = x.replace('d','1')
+    x = x.replace('n','1')
+    x = x.replace('j','2')
+    x = x.replace('c','2')
+    x = x.replace('f','3')
+    x = x.replace('v','3')    
+    x = x.replace('S','4')
+    x = x.replace('Z','4')
+    x = x.replace('k','5')
+    x = x.replace('g','5')
+    x = x.replace('G','5')
+    x = x.replace('s','6')
+    x = x.replace('z','6')
+    x = x.replace('T','7')
+    x = x.replace('D','7')
+    return x
+
 def butter_highpass(cutoff, fs, order=5):
     nyq = 0.5 * fs
     normal_cutoff = cutoff / nyq

@@ -25,43 +25,56 @@ PHONEME_MAP = [
     'w',  # "aw"
     'X',  # "ax"
     'y',  # "ay"
-    'b',  # "b"
-    'c',  # "ch"
-    'd',  # "d"
-    'D',  # "dh"
+    'b',  # "b" | '0'
+    'c',  # "ch" | '2'
+    'd',  # "d" | '1'
+    'D',  # "dh" | '7'
     'e',  # "eh"
     'r',  # "er"
     'E',  # "ey"
-    'f',  # "f"
-    'g',  # "g"
+    'f',  # "f" | '3'
+    'g',  # "g" | '5'
     'H',  # "hh"
     'i',  # "ih"
     'I',  # "iy"
-    'j',  # "jh"
-    'k',  # "k"
+    'j',  # "jh" | '2'
+    'k',  # "k" | '5'
     'l',  # "l"
-    'm',  # "m"
-    'n',  # "n"
-    'G',  # "ng"
+    'm',  # "m" | '0'
+    'n',  # "n" | '1'
+    'G',  # "ng" | '5'
     'O',  # "ow"
     'Y',  # "oy"
-    'p',  # "p"
+    'p',  # "p" | '0'
     '&',  # "pau"
     'R',  # "r"
-    's',  # "s"
-    'S',  # "sh"
+    's',  # "s" | '6'
+    'S',  # "sh" | '4'
     '.',  # "ssil"
-    't',  # "t"
-    'T',  # "th"
+    't',  # "t" | '1'
+    'T',  # "th" | '7'
     'u',  # "uh"
     'U',  # "uw"
-    'v',  # "v"
+    'v',  # "v" | '3'
     'W',  # "w"
     '?',  # "y"
-    'z',  # "z"
-    'Z',  # "zh"
+    'z',  # "z" | '6'
+    'Z',  # "zh" | '4'
     ' ', # "BLANK"
 ]
+
+
+
+#voicing unvoicing
+# p b m
+# t d n
+# ch jh
+# f v
+# sh zh
+# k g ng
+# s z
+# th dh
+
 
 if __name__ == '__main__':
     print("len of PHONEME_MAP: ", len(PHONEME_MAP))
