@@ -129,7 +129,8 @@ def _eval_pr(model, ema_dataloader_test, device, **args):
             tar = label_str[m]
             if args['pr_voicing']:
                 src = voicing_fn(src)
-                tar = voicing_fn(src)
+                tar = voicing_fn(tar)
+                
             edit_distance += Levenshtein.distance(src, tar)
             count_edit += 1
             
