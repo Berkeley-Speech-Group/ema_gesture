@@ -263,7 +263,8 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
 
     fig = plt.figure(figsize=(18, 8))
     fig.suptitle(text_trans,fontsize=20)
-    colors = ['b', 'g', 'r', 'c', 'm', 'y']
+    colors = ['red', 'blue', 'black', 'orange', 'purple', 'grey']
+    
     outer = gridspec.GridSpec(6, 1, wspace=0.2, hspace=0.2)
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
     for i in range(6):
@@ -271,9 +272,10 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
             _data = ema_data[:,i*2+j] #shape is (win_size,)
-            ax.plot(x, _data,c=colors[i], linestyle='dashed', label='ori')
+            #ax.plot(x, _data,c=colors[i], linestyle='dashed', label='ori')
+            #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
             if mode == 'kinematics':
-                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec')
+                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=10)
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
@@ -311,6 +313,8 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
             stds.append(float(line_list[1]))
     means = np.array(means)
     stds = np.array(stds)
+    
+    means = means * 0.3
 
     data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
     data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
@@ -356,23 +360,25 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     
     len_data = len(data_x_1)
     
-    plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], label='tongue dorsum', color='red', linewidth=1)
-    plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=5)
-    plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], label='tongue blade', color='blue', linewidth=1)
-    plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=5)
-    plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], label='tongue tip', color='black', linewidth=1)
-    plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=5)
-    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], label='tongue incisor', color='orange', linewidth=1)
-    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=5)
-    plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], label='tongue upper lip', color='purple', linewidth=1)
-    plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=5)
-    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], label='tongue lower lip', color='grey', linewidth=1)
-    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=5)
+#     plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=4)
+#     plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=10)
+#     plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=4)
+#     plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=10)
+#     plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=4)
+#     plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=10)
+    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=4)
+    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=10)
+#     plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=4)
+#     plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=10)
+    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=4)
+    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=10)
 
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    plt.legend(prop={'size': 20})
-    plt.title(title,fontdict = {'fontsize' : 30})
+    #plt.xticks(fontsize=50)
+    #plt.yticks(fontsize=50)
+    plt.xticks([])
+    plt.yticks([])
+    #plt.legend(prop={'size': 50})
+    plt.title(title,fontdict = {'fontsize' : 50})
     plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.clf()
 
