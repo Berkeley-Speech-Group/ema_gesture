@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from dataloader import EMA_Dataset, collate
 from models.csnmf import AE_CSNMF2, PR_Model
-from trainer import trainer_resynthesis, trainer_pr, eval_resynthesis, _eval_pr
+from trainer import trainer_resynthesis, trainer_pr, eval_resynthesis, eval_pr
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
