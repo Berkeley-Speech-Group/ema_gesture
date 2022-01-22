@@ -8,7 +8,7 @@ A Pytorch Implementation of (Varitional) Auto-Encoder Convolutional Non-Negative
 
 https://docs.google.com/presentation/d/10XbOxXiPCrw9Go2Qp_-aBY7Cp7l6JDoCT87a2W8VhpM/edit?usp=sharing
 
-### Docs (2022 NAACL, Jan 16 2022)
+### Docs
 
 https://www.dropbox.com/scl/fi/orhv9g851sfftdbr0lssz/Gestural-Unit-Discovery2022-NAACL-Jan16Jan15-JSTSP.paper?dl=0&rlkey=bbhoawttjstpbl255mutxk8df
 
