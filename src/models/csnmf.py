@@ -117,7 +117,7 @@ class PR_Model(nn.Module):
             self_state[name].copy_(param)
 
 
-class AE_CSNMF2(nn.Module):
+class AE_CSNMF(nn.Module):
     def __init__(self, **args):
         super().__init__()
 
@@ -180,11 +180,13 @@ class AE_CSNMF2(nn.Module):
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
+        
+        loss_vq = torch.Tensor([0]).cuda()
 
         if self.pr_joint:
-            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  
+            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens, loss_vq
         else:
-            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
+            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq
 
     def loadParameters(self, path):
         self_state = self.state_dict()
@@ -200,8 +202,94 @@ class AE_CSNMF2(nn.Module):
                 print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
                 continue
             self_state[name].copy_(param)
+            
+            
 
 
+class VQ_AE_CSNMF(nn.Module):
+    def __init__(self, **args):
+        super().__init__()
+
+        self.win_size = args['win_size']
+        self.t = args['segment_len']
+        self.num_pellets = args['num_pellets']
+        self.num_gestures = args['num_gestures']
+        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder5 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder6 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.conv_encoder7 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
+        self.sparse_c_base = args['sparse_c_base']
+        self.sparse_t_base = args['sparse_t_base']
+        self.pr_joint = args['pr_joint']
+        self.fixed_length = args['fixed_length']
+
+        self.vq_model = VQ_VAE(**args)
+
+
+        if self.pr_joint:
+            self.pr_model = PR_Model(**args)
+
+    def forward(self, x, ema_inp_lens):
+        #shape of x is [B,t,A]
+
+        time_steps = x.shape[1]
+        x = x.transpose(-1, -2) #[B, A, t]
+        H = F.relu(self.conv_encoder1(x)) #[B, C, t]
+        H = F.relu(self.conv_encoder2(H)) #[B, C, t]
+        #H = F.relu(self.conv_encoder3(H)) #[B, C, t]
+        #H = F.relu(self.conv_encoder4(H)) #[B, C, t]
+        #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
+        #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
+        H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
+        if self.pr_joint:
+            if not self.fixed_length:
+                log_p_out, p_out, out_lens = self.pr_model(H.permute(0,2,1), ema_inp_lens)
+            else:
+                B = H.shape[0]
+                t = H.shape[2]
+                inp_utter_lens = torch.ones(B) * t
+                log_p_out, p_out, out_lens = self.pr_model(H.permute(0,2,1), inp_utter_lens)
+        latent_H = H
+        sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
+        sparsity_c = sparsity_c.mean() #[B, T] -> [B]
+        sparsity_t = sparsity_t.mean() #[B, D] -> [B]
+        
+        
+        x_transpose = x.transpose(-1,-2) #[B, T, A]
+        x_pad = F.pad(x, pad=(0,0,(self.win_size-1)//2,(self.win_size-1)//2,0,0), mode='constant', value=0) #[B,T+win,A]
+        x_unfold = x_pad.unfold(1, self.win_size,1) #[B, T, A, win]
+        x_unfold_reshape = x_unfold.reshape(x_unfold.shape[0], x_unfold.shape[1], x_unfold.shape[2]*x_unfold.shape[3]) #[B,T,A*win]
+        loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)   
+        
+        self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size) #[40, 12, 41]
+        self.gesture_weight = self.gesture_weight.permute(1, 0, 2) #[12, 40, 41]
+        
+        inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=(self.win_size-1)//2)
+        
+        loss_vq = 100 * loss_vq
+
+        if self.pr_joint:
+            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens, loss_vq
+        else:
+            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq
+
+    def loadParameters(self, path):
+        self_state = self.state_dict()
+        loaded_state = torch.load(path)
+        for name, param in loaded_state.items():
+            origname = name
+            if name not in self_state:
+                name = name.replace("module.", "")
+                if name not in self_state:
+                    print("%s is not in the model."%origname)
+                    continue
+            if self_state[name].size() != loaded_state[origname].size():
+                print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
+                continue
+            self_state[name].copy_(param)
 
 
     

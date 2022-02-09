@@ -76,7 +76,7 @@ def pySTFT(x, fft_length=1024, hop_length=256):
 
 def wav2mel(wav):
     #input size of wav should be [1, length]
-    mel_basis = mel(16000, 1024, fmin=90, fmax=7600, n_mels=80).T
+    mel_basis = mel(sr=16000, n_fft=1024, fmin=90, fmax=7600, n_mels=80).T
     min_level = np.exp(-100 / 20 * np.log(10))
     b, a = butter_highpass(30, 16000, order=5)
 
@@ -194,7 +194,7 @@ def vis_H(model, **args):
     if args['pr_joint']:
         ema_ori, ema_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
-        ema_ori, ema_hat, latent_H, _, _, _, _ = model(ema_data, None)
+        ema_ori, ema_hat, latent_H, _, _, _, _, _ = model(ema_data, None)
 
     latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
     
@@ -242,7 +242,7 @@ def vis_kinematics(model, **args):
     if args['pr_joint']:
         ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
-        ema_ori, ema_hat,_,_,_,_,_ = model(ema_data, None)
+        ema_ori, ema_hat,_,_,_,_,_ ,_= model(ema_data, None)
 
     ema_data_hat = ema_hat.transpose(-1, -2).cpu().detach().numpy()
     
@@ -272,7 +272,7 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
             _data = ema_data[:,i*2+j] #shape is (win_size,)
-            #ax.plot(x, _data,c=colors[i], linestyle='dashed', label='ori')
+            ax.plot(x, _data,c=colors[i], label='ori')
             #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
             if mode == 'kinematics':
                 ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=10)
@@ -314,7 +314,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     means = np.array(means)
     stds = np.array(stds)
     
-    means = means * 0.3
+    #means = means * 0.3
 
     data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
     data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
@@ -366,12 +366,25 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
 #     plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=10)
 #     plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=4)
 #     plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=10)
-    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=4)
-    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=10)
+#     plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=4)
+#     plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=10)
 #     plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=4)
 #     plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=10)
-    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=4)
-    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=10)
+#     plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=4)
+#     plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=10)
+    
+    plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=1)
+    plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=3)
+    plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=1)
+    plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=3)
+    plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=1)
+    plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=3)
+    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=1)
+    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=3)
+    plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=1)
+    plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=3)
+    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=1)
+    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=3)
 
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)

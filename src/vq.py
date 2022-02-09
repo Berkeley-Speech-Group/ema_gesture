@@ -6,7 +6,7 @@ import numpy as np
 
 
 class VQ_VAE(nn.Module):
-    def __init__(self, commitment_cost=1.25, decay=0.9, ema=False, **args):
+    def __init__(self, commitment_cost=0.25, decay=0.9, ema=False, **args):
         super().__init__()
         
         num_embeddings = args['num_gestures']
@@ -27,7 +27,7 @@ class VQ_VAE(nn.Module):
         self._decay = decay
         self._epsilon = 1e-5
 
-        self._ema = ema
+        self._ema = False
 
     def forward(self, inputs):
 
@@ -89,10 +89,7 @@ class Kmeans_Batch(nn.Module):
         embedding_dim = args['win_size'] * args['num_pellets']
         self._embedding_dim = embedding_dim
         self._num_embeddings = num_embeddings
-        self._embedding = nn.Embedding(self._num_embeddings, self._embedding_dim)
-        kmeans_centers = torch.from_numpy(np.load('kmeans_centers_40.npy')) #[40, 12*41=492]
-        #self._embedding.weight.data = kmeans_centers
-        #self._embedding.weight.data.uniform_(-1/self._num_embeddings, 1/self._num_embeddings)
+        self._embedding = nn.Embedding(self._num_embeddings, self._embedding_dim, requires_grad=False)
         self._commitment_cost = commitment_cost
 
     def forward(self, inputs):
@@ -114,13 +111,11 @@ class Kmeans_Batch(nn.Module):
         encodings = torch.zeros(encoding_indices.shape[0], self._num_embeddings, device=inputs.device)
         encodings.scatter_(1, encoding_indices, 1)
         
+        
         # Quantize and unflatten
         quantized = torch.matmul(encodings, self._embedding.weight).view(input_shape)
         
         # Loss
-        e_latent_loss = F.mse_loss(quantized.detach(), inputs)
-        q_latent_loss = F.mse_loss(quantized, inputs.detach())
-        loss_vq = q_latent_loss + self._commitment_cost * e_latent_loss
+        loss_vq = F.mse_loss(quantized, inputs)
 
-        
         return loss_vq, None, None

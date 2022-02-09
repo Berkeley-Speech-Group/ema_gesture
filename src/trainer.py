@@ -38,9 +38,9 @@ def eval_resynthesis(model, ema_dataloader_test, device, **args):
         model.eval()
         
         if args['pr_joint']:
-            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
+            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens, loss_vq  = model(ema_batch, ema_len_batch)
         else:
-            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_batch, None)
+            inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq = model(ema_batch, None)
             
         if args['pr_joint']:
             loss_ctc = criterion(log_p_out, lab_batch, out_lens, lab_len_batch)
@@ -89,10 +89,10 @@ def eval_pr(model, ema_dataloader_test, device, **args):
         elif args['pr_wav2vec2']:
             log_p_out, p_out, out_lens = model(wav2vec2_batch, wav2vec2_len_batch)
         elif args['pr_ema'] or args['pr_joint']:
-            if args['resynthesis']:
-                x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch)
+            if args['resynthesis'] or args['vq-resynthesis']:
+                x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens, loss_vq = model(ema_batch, ema_len_batch)
             else:
-                log_p_out, p_out, out_lens = model(ema_batch, ema_len_batch) 
+                log_p_out, p_out, out_lens, loss_vq = model(ema_batch, ema_len_batch) 
         else:
             print("Error!! No Training Task Specified!")
             exit()
@@ -200,9 +200,9 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
             optimizer.zero_grad()
             
             if args['pr_joint']:
-                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_batch, ema_len_batch)
+                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens, loss_vq = model(ema_batch, ema_len_batch)
             else:
-                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_batch, None)
+                inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq = model(ema_batch, None)
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
             loss = args['rec_factor']*rec_loss
 
@@ -223,14 +223,16 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
                 loss += args['entropy_c_factor']*(entropy_c)
             if args['pr_joint']:
                 loss += args['pr_joint_factor']*loss_ctc
+            if args['vq_resynthesis']:
+                loss += loss_vq
 
             loss.backward()
             optimizer.step()
             #model.conv_decoder.apply(clipper)
             if args['pr_joint']:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, ctc=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_ctc.item()))
+                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, ctc=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_ctc.item(), loss_vq.item()))
             else:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c))
+                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq.item()))
 
             rec_loss_e.append(rec_loss.item())
             sparsity_c_e.append(float(sparsity_c))
