@@ -74,6 +74,8 @@ class VQ_VAE(nn.Module):
             loss_vq = self._commitment_cost * e_latent_loss 
         else:
             loss_vq = q_latent_loss + self._commitment_cost * e_latent_loss
+            
+        print(self._embedding.weight)
 
         return loss_vq, None, None
 

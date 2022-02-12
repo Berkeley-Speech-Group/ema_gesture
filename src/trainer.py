@@ -224,7 +224,7 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
             if args['pr_joint']:
                 loss += args['pr_joint_factor']*loss_ctc
             if args['vq_resynthesis']:
-                loss += loss_vq
+                loss += args['vq_factor']*loss_vq
 
             loss.backward()
             optimizer.step()

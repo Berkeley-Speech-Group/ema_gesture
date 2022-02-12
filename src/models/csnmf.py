@@ -231,6 +231,7 @@ class VQ_AE_CSNMF(nn.Module):
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
+            
 
     def forward(self, x, ema_inp_lens):
         #shape of x is [B,t,A]
@@ -264,12 +265,10 @@ class VQ_AE_CSNMF(nn.Module):
         x_unfold_reshape = x_unfold.reshape(x_unfold.shape[0], x_unfold.shape[1], x_unfold.shape[2]*x_unfold.shape[3]) #[B,T,A*win]
         loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)   
         
-        self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size) #[40, 12, 41]
-        self.gesture_weight = self.gesture_weight.permute(1, 0, 2) #[12, 40, 41]
+        self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size).permute(1,0,2) #[40, 12, 41] -> (12, 40, 41)
         
         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=(self.win_size-1)//2)
         
-        loss_vq = 100 * loss_vq
 
         if self.pr_joint:
             return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens, loss_vq
