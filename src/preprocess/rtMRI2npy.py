@@ -5,10 +5,14 @@ from tqdm import tqdm
 
 path = 'rtMRI'
 
+
+print("Convert track mat files to npy....")
+
 for spk_id in os.listdir(path):
     
     if not spk_id.startswith("F") and not spk_id.startswith("M"):
         continue
+    print("Speaker ID is " + spk_id)
     spk_id_path = os.path.join(path, spk_id)
     tracks_dir_path = os.path.join(spk_id_path, 'tracks')
     
@@ -33,7 +37,8 @@ for spk_id in os.listdir(path):
                 frame = frame[0]
                 
             if len(frame) == 0:
-                p#rint("sqsqsqsq"+track_mat_path + "dwdw" + str(t))
+                print("Frame Missing!!!!!")
+                print(track_mat_path + " frames: " + str(t))
                 continue
                 
             frame = frame[0]
@@ -77,6 +82,8 @@ for spk_id in os.listdir(path):
         track_array = np.concatenate(track_array, axis=0) #[T, 170, 2]
         #print(track_array.shape)
         np.save(track_mat_path[:-4], track_array)
+        
+print("Finished....")
        
             
             
