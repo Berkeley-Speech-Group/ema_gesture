@@ -11,8 +11,6 @@ for spk_id in os.listdir(path):
         continue
     spk_id_path = os.path.join(path, spk_id)
     tracks_dir_path = os.path.join(spk_id_path, 'tracks')
-    trans_dir_path = os.path.join(spk_id_path, 'trans')
-    wav_dir_path = os.path.join(spk_id_path, "wav")
     
     for track_mat in tqdm(os.listdir(tracks_dir_path)):
         if not track_mat.endswith("mat"):
@@ -20,7 +18,6 @@ for spk_id in os.listdir(path):
         
         track_mat_path = os.path.join(tracks_dir_path, track_mat)
         
-    
         mat = scipy.io.loadmat(track_mat_path)
         res = mat['trackdata']
         num_frames = len(res[0])
@@ -31,10 +28,14 @@ for spk_id in os.listdir(path):
             frame_array = []
             
             frame = res[0][t]
-            print(frame)
             
             while(len(frame) == 1):
                 frame = frame[0]
+                
+            if len(frame) == 0:
+                p#rint("sqsqsqsq"+track_mat_path + "dwdw" + str(t))
+                continue
+                
             frame = frame[0]
             
             while(len(frame) == 1):
@@ -75,7 +76,7 @@ for spk_id in os.listdir(path):
             
         track_array = np.concatenate(track_array, axis=0) #[T, 170, 2]
         #print(track_array.shape)
-        #np.save(track_mat_path[:-4], track_array)
+        np.save(track_mat_path[:-4], track_array)
        
             
             
