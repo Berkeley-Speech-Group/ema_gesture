@@ -1,11 +1,8 @@
-emadata
-rtMRI
 save_models
-runs
 .ipynb_checkpoints
 _pycache_
 .DS_Store
 src/_*
 src/models/_*
 src/.ipynb*
-wav2vec_small_960h.pt
+data

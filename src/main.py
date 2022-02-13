@@ -20,6 +20,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description = "main python code")
+parser.add_argument('--dataset', type=str, default='ema', help='ema, rtMRI')
 parser.add_argument('--batch_size', type=int, default=16, help='')
 parser.add_argument('--num_pellets', type=int, default=12, help='')
 parser.add_argument('--num_gestures', type=int, default=40, help='')

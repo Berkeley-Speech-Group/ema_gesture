@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-path = 'emadata'
+path = 'data/emadata'
 phn_set = set()
 
 for spk_id in os.listdir(path):

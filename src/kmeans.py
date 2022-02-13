@@ -12,7 +12,7 @@ def kmeans_ema(spk_id_setting='mngu0'):
     ema_paths = []
     ema_npy_paths = []
     mode = 'train'
-    path = 'emadata'
+    path = 'data/emadata'
     spk_id_setting = spk_id_setting
 
     for spk_id in os.listdir(path):
@@ -80,8 +80,8 @@ def kmeans_ema(spk_id_setting='mngu0'):
     print("kmeans finished!!")
     print("shape of centers of kmeans is", cluster_centers.shape)
     print("shape of ids of kmeans is", cluster_ids.shape)
-    np.save("kmeans_centers.npy", cluster_centers.detach().numpy())
-    np.save("kmeans_ids.npy", cluster_ids.detach().numpy())
+    np.save("data/kmeans_pretrain/kmeans_centers.npy", cluster_centers.detach().numpy())
+    np.save("data/kmeans_pretrain/kmeans_ids.npy", cluster_ids.detach().numpy())
     
 
 if __name__ == '__main__':

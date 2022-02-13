@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-path = 'emadata'
+path = 'data/emadata'
 
 global_min = 1e6*np.ones(12)
 global_max = -1e6*np.ones(12)

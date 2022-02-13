@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io
 from tqdm import tqdm
 
-path = 'rtMRI'
+path = 'data/rtMRI'
 
 
 print("Convert track mat files to npy....")
