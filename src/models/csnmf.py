@@ -228,7 +228,6 @@ class VQ_AE_CSNMF(nn.Module):
 
         self.vq_model = VQ_VAE(**args)
 
-
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
             

@@ -15,8 +15,8 @@ class VQ_VAE(nn.Module):
         self._num_embeddings = num_embeddings
         self._embedding = nn.Embedding(self._num_embeddings, self._embedding_dim)
 
-        kmeans_centers = torch.from_numpy(np.load('kmeans_centers_40.npy')) #[40, 12*41=492]
-        #self._embedding.weight.data = kmeans_centers
+        kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_40.npy')) #[40, 12*41=492]
+        self._embedding.weight.data = kmeans_centers
         #self._embedding.weight.data.uniform_(-1/self._num_embeddings, 1/self._num_embeddings)
         self._commitment_cost = commitment_cost
 
@@ -27,7 +27,7 @@ class VQ_VAE(nn.Module):
         self._decay = decay
         self._epsilon = 1e-5
 
-        self._ema = False
+        self._ema = True
 
     def forward(self, inputs):
 
@@ -51,13 +51,11 @@ class VQ_VAE(nn.Module):
         #ema
         if self._ema:
             self._ema_cluster_size = self._ema_cluster_size * self._decay + (1 - self._decay) * torch.sum(encodings, 0)
-
             n = torch.sum(self._ema_cluster_size.data)
             self._ema_cluster_size = (self._ema_cluster_size + self._epsilon) / (n + self._num_embeddings * self._epsilon) * n
             
             dw = torch.matmul(encodings.t(), flat_input)
             self._ema_w = nn.Parameter(self._ema_w * self._decay + (1 - self._decay) * dw)
-
             self._embedding.weight = nn.Parameter(self._ema_w / self._ema_cluster_size.unsqueeze(1))
 
             
@@ -75,11 +73,12 @@ class VQ_VAE(nn.Module):
         else:
             loss_vq = q_latent_loss + self._commitment_cost * e_latent_loss
             
-        print(self._embedding.weight)
+        #print(self._embedding.weight)
+        
+        loss_vq = F.mse_loss(quantized, inputs)
+        
 
         return loss_vq, None, None
-
-
 
 
 

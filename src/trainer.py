@@ -225,14 +225,18 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
                 loss += args['pr_joint_factor']*loss_ctc
             if args['vq_resynthesis']:
                 loss += args['vq_factor']*loss_vq
+                
+            loss = 0.01 * loss_vq
 
             loss.backward()
+            #print(model.vq_model._embedding.weight.grad)
+            print(model.vq_model._embedding.weight)
             optimizer.step()
             #model.conv_decoder.apply(clipper)
             if args['pr_joint']:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, ctc=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_ctc.item(), loss_vq.item()))
+                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, ctc=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_ctc.item(), 100*loss_vq.item()))
             else:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq.item()))
+                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, 100*loss_vq.item()))
 
             rec_loss_e.append(rec_loss.item())
             sparsity_c_e.append(float(sparsity_c))

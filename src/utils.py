@@ -136,7 +136,7 @@ def draw_mel(mels, mode, title):
 
 def ema2info(**args):
     cur_ema_id = args['test_ema_path'].split("/")[-1][:-4]
-    spk_path = os.path.join(args['test_ema_path'].split("/")[0], args['test_ema_path'].split("/")[1])
+    spk_path = os.path.join(os.path.join(args['test_ema_path'].split("/")[0], args['test_ema_path'].split("/")[1]), args['test_ema_path'].split("/")[2])
     wav_path = os.path.join(os.path.join(spk_path, 'wav'), cur_ema_id+'.wav')
     wav_data, _ = torchaudio.load(wav_path)
     mel_data = torch.FloatTensor(wav2mel(wav_data)).transpose(0,1).unsqueeze(0)
@@ -302,7 +302,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
     means = []
     stds = []
-    stats_path = os.path.join(os.path.join('emadata', 'cin_us_'+args['spk_id']), 'ema.stats')
+    stats_path = os.path.join(os.path.join('data/emadata', 'cin_us_'+args['spk_id']), 'ema.stats')
     with open(stats_path) as f:
         while True:
             line = f.readline()

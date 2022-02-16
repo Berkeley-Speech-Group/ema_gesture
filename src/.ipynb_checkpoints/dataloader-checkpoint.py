@@ -18,7 +18,7 @@ def loadWAV(filename, max_points=32000):
 
 class EMA_Dataset:
     
-    def __init__(self, path='emadata', mode='train', **args):
+    def __init__(self, path='data/emadata', mode='train', **args):
         
         ####record paths for wav file and nema file
         ####train/test = 80%/20%
@@ -36,17 +36,108 @@ class EMA_Dataset:
         
         if self.mode == 'train':
             if self.spk_id_setting == 'mngu0':
-                ema_metalist_path = 'emadata/metalist_ema_mngu0_train.txt'
-                wav_metalist_path = 'emadata/metalist_wav_mngu0_train.txt'
-                lab_metalist_path = 'emadata/metalist_lab_mngu0_train.txt'
+                ema_metalist_path = 'data/emadata/metalist_ema_mngu0_train.txt'
+                wav_metalist_path = 'data/emadata/metalist_wav_mngu0_train.txt'
+                lab_metalist_path = 'data/emadata/metalist_lab_mngu0_train.txt'
             elif self.spk_id_setting == 'all':
-                ema_metalist_path = 'emadata/metalist_ema_train_all.txt'
-                wav_metalist_path = 'emadata/metalist_wav_train_all.txt'
-                lab_metalist_path = 'emadata/metalist_lab_train_all.txt'
+                ema_metalist_path = 'data/emadata/metalist_ema_train_all.txt'
+                wav_metalist_path = 'data/emadata/metalist_wav_train_all.txt'
+                lab_metalist_path = 'data/emadata/metalist_lab_train_all.txt'
         else:
-            ema_metalist_path = 'emadata/metalist_ema_mngu0_test.txt'
-            wav_metalist_path = 'emadata/metalist_wav_mngu0_test.txt'
-            lab_metalist_path = 'emadata/metalist_lab_mngu0_test.txt'
+            ema_metalist_path = 'data/emadata/metalist_ema_mngu0_test.txt'
+            wav_metalist_path = 'data/emadata/metalist_wav_mngu0_test.txt'
+            lab_metalist_path = 'data/emadata/metalist_lab_mngu0_test.txt'
+            
+        with open(ema_metalist_path) as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                self.ema_npy_paths.append("data/"+line[:-1])
+                
+        with open(wav_metalist_path) as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                self.wav_paths.append("data/"+line[:-1])
+                
+        with open(lab_metalist_path) as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                self.lab_npy_paths.append("data/"+line[:-1])
+    
+        print("###############################all data start#############################################")
+        print("spk setting is ", self.spk_id_setting)
+        print("# of ema npys is ", len(self.ema_npy_paths)) #4409
+        print("# of wavs is ", len(self.wav_paths)) #4409 (full: 4579)
+        print("# of lab npys is ", len(self.lab_npy_paths)) #4409
+        print("###################################all data end##########################################")
+
+
+    def __len__(self): #4579
+        return len(self.ema_npy_paths)
+
+    def __getitem__(self, index):
+        wav_path = self.wav_paths[index]
+        wav_data = loadWAV(wav_path) #[1, num_points]
+        mel_data = wav2mel(wav_data) #[T_mel, 80]
+        stft_data = wav2stft(wav_data) #[T_stft, 201]
+        mfcc_data = wav2mfcc(wav_data) #[T_mfcc, 201]
+        #wav2vec2 = wav2vec2(wav_data)
+        wav2vec2 = torch.zeros_like(stft_data)
+        ema_npy_path = self.ema_npy_paths[index]
+        lab_npy_path = self.lab_npy_paths[index]
+        ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema_real, 12]
+        lab_data = torch.LongTensor(np.load(lab_npy_path)) #[T_lab]
+        lab_data_unique = torch.unique_consecutive(lab_data) #[T_unique]
+        
+        ####################################
+        ########Adopt fixed 500 ema points
+        ########We should fix t because t is related to H
+        ####################################
+
+        if not self.eval:
+            if self.fixed_length:
+                if ema_data.shape[0] >= self.segment_len:
+                    start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
+                    ema_data = ema_data[start_point:start_point+self.segment_len]
+                else:
+                    ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
+
+        return ema_data, wav_data, mel_data, stft_data, mfcc_data, wav2vec2, lab_data_unique
+    
+    
+class rtMRI_Dataset:
+    
+    def __init__(self, path='data/rtRMI', mode='train', **args):
+        
+        self.segment_len = args['segment_len']
+        self.wav_paths = []
+        self.ema_paths = []
+        self.lab_paths = []
+        self.ema_npy_paths = []
+        self.lab_npy_paths = []
+        self.eval = args['vis_kinematics'] or args['vis_gestures']
+        self.spk_id_setting = args['spk_id']
+        self.mode = mode
+        self.fixed_length = args['fixed_length']
+        
+        if self.mode == 'train':
+            if self.spk_id_setting == 'mngu0':
+                ema_metalist_path = 'data/emadata/metalist_ema_mngu0_train.txt'
+                wav_metalist_path = 'data/emadata/metalist_wav_mngu0_train.txt'
+                lab_metalist_path = 'data/emadata/metalist_lab_mngu0_train.txt'
+            elif self.spk_id_setting == 'all':
+                ema_metalist_path = 'data/emadata/metalist_ema_train_all.txt'
+                wav_metalist_path = 'data/emadata/metalist_wav_train_all.txt'
+                lab_metalist_path = 'data/emadata/metalist_lab_train_all.txt'
+        else:
+            ema_metalist_path = 'data/emadata/metalist_ema_mngu0_test.txt'
+            wav_metalist_path = 'data/emadata/metalist_wav_mngu0_test.txt'
+            lab_metalist_path = 'data/emadata/metalist_lab_mngu0_test.txt'
             
         with open(ema_metalist_path) as f:
             while True:
