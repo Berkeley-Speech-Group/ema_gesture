@@ -204,8 +204,6 @@ class AE_CSNMF(nn.Module):
             self_state[name].copy_(param)
             
             
-
-
 class VQ_AE_CSNMF(nn.Module):
     def __init__(self, **args):
         super().__init__()
@@ -227,6 +225,7 @@ class VQ_AE_CSNMF(nn.Module):
         self.fixed_length = args['fixed_length']
 
         self.vq_model = VQ_VAE(**args)
+        #self.vq_model2 = VQ_VAE2(**args)
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
@@ -257,11 +256,12 @@ class VQ_AE_CSNMF(nn.Module):
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
         
-        
         x_transpose = x.transpose(-1,-2) #[B, T, A]
         x_pad = F.pad(x, pad=(0,0,(self.win_size-1)//2,(self.win_size-1)//2,0,0), mode='constant', value=0) #[B,T+win,A]
         x_unfold = x_pad.unfold(1, self.win_size,1) #[B, T, A, win]
         x_unfold_reshape = x_unfold.reshape(x_unfold.shape[0], x_unfold.shape[1], x_unfold.shape[2]*x_unfold.shape[3]) #[B,T,A*win]
+        
+        
         loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)   
         
         self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size).permute(1,0,2) #[40, 12, 41] -> (12, 40, 41)
