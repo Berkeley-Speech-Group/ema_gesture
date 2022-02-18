@@ -18,16 +18,19 @@ for spk_id in tqdm(os.listdir(path)):
         npy_id = npy_file[:-4]
         npy_path = os.path.join(spk_id_path, npy_file)
         ema_data = np.load(npy_path) #[T, 24]
+        #print(np.max(ema_data))
         all_ema.append(ema_data)
 
 all_ema = np.concatenate(all_ema, axis=0) #[1421115, 24]
-means = np.mean(all_ema, axis=0).reshape(1, -1) #[1, 24]
-stds = np.std(all_ema, axis=0).reshape(1, -1) #[1, 24]
-
+means = np.nanmean(all_ema, axis=0).reshape(1, -1) #[1, 24]
+stds = np.nanstd(all_ema, axis=0).reshape(1, -1) #[1, 24]
 
 
 np.save(os.path.join(path, "mean"), means)
 np.save(os.path.join(path, "stds"), stds)
+
+print("means", means)
+print("stds", stds)
 
 
 print("Finished Means and Stds")

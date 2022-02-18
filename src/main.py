@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from dataloader import EMA_Dataset, IEEE_Dataset, collate
 from models.csnmf import AE_CSNMF, PR_Model, VQ_AE_CSNMF
 from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr
-from utils import vis_gestures, vis_kinematics, vis_H
+from utils import vis_gestures_ema, vis_kinematics_ema, vis_gestures_ieee, vis_kinematics_ieee, vis_H
 import seaborn as sns
 
 import warnings
@@ -130,8 +130,12 @@ if __name__ == "__main__":
         print("###################################Visualize Gestures#########################################")
         os.system("sudo rm -rf *.png")
         vis_H(model, **vars(args))
-        vis_kinematics(model, **vars(args))
-        vis_gestures(model, **vars(args))
+        if args.dataset == 'ema':
+            vis_kinematics_ema(model, **vars(args))
+            vis_gestures_ema(model, **vars(args))
+        elif args.dataset == 'ieee':
+            vis_kinematics_ieee(model, **vars(args))
+            vis_gestures_ieee(model, **vars(args))            
         exit()
         
     if args.dataset == 'ema':
@@ -168,7 +172,7 @@ if __name__ == "__main__":
         #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     
     #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.8)
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.lr_decay_rate, patience=1, threshold=0.0001)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.lr_decay_rate, patience=4, threshold=0.0001)
 
     if args.pr_mel or args.pr_ema or args.pr_stft or args.pr_wav2vec2 or args.pr_mfcc:
         trainer_pr(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))

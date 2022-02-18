@@ -160,6 +160,7 @@ class AE_CSNMF(nn.Module):
 
     def forward(self, x, ema_inp_lens):
         #shape of x is [B,t,A]
+        #print(x)
         
         time_steps = x.shape[1]
         x = x.transpose(-1, -2) #[B, A, t]

@@ -184,7 +184,7 @@ def get_sparsity(H):
     
 
 def vis_H(model, **args):
-    ema_id, wav_data, mel_data, text_trans = ema2info(**args)
+    #ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
     ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
     B = ema_data.shape[0]
@@ -224,7 +224,7 @@ def vis_H(model, **args):
     print("sparse gesture indices", sparse_indices)
 
 
-def vis_kinematics(model, **args):
+def vis_kinematics_ema(model, **args):
     ######################################
     ############The Original Data
     #####################################
@@ -249,8 +249,34 @@ def vis_kinematics(model, **args):
     
     draw_kinematics(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
+    
+def vis_kinematics_ieee(model, **args):
+    ######################################
+    ############The Original Data
+    #####################################
+    ema_data = np.load(args['test_ema_path']) #[t, 12]
+    ema_id = args['test_ema_path'].split("/")[-1][:-4]
+    #draw_kinematics(ema_data, mode=ema_id+'_ori', **args)
 
-def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
+    ######################################
+    ############Reconstruction
+    ######################################
+    ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
+    B = ema_data.shape[0]
+    T = ema_data.shape[1]
+    ema_len_batch = (torch.ones(B) * T).to(device)
+    
+    if args['pr_joint']:
+        ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
+    else:
+        ema_ori, ema_hat,_,_,_,_,_ ,_= model(ema_data, None)
+
+    ema_data_hat = ema_hat.transpose(-1, -2).cpu().detach().numpy()
+    
+    draw_kinematics_ieee(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
+    
+
+def draw_kinematics_ema(ema_data, ema_data_hat, mode, title, **args):
     
 
     ema_data = ema_data.squeeze(0)
@@ -296,8 +322,52 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
     plt.savefig(title+"_"+".png")
     plt.clf()
     
+def draw_kinematics_ieee(ema_data, ema_data_hat, mode, title, **args):
+    
 
-def draw_2d(ema_data, ema_data_hat, mode, title, **args):
+    ema_data = ema_data.squeeze(0)
+    if mode == 'kinematics':
+        ema_data_hat = ema_data_hat.squeeze(0)
+    
+    
+    x = np.arange(ema_data.shape[0])
+
+    fig = plt.figure(figsize=(18, 8))
+    fig.suptitle("kinematics")
+    colors = ['red', 'blue', 'black', 'orange', 'purple', 'grey', 'yellow', 'pink']
+    
+    outer = gridspec.GridSpec(8, 1, wspace=0.2, hspace=0.2)
+    labels = ['TR', 'TB', 'TT', 'UL', 'LL', 'ML','JAW', 'JAWL']
+    for i in range(8):
+        inner = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+        for j in range(3):
+            ax = plt.Subplot(fig, inner[j])
+            _data = ema_data[:,i*3+j] #shape is (win_size,)
+            ax.plot(x, _data,c=colors[i], label='ori')
+            #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
+            if mode == 'kinematics':
+                ax.plot(x, ema_data_hat[:,i*3+j],c=colors[i], label='rec', linestyle='dashed', linewidth=10)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            fig.add_subplot(ax)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            #ax.get_xaxis().set_ticks([])
+            #ax.get_yaxis().set_ticks([])
+            if j == 0:
+                ax.set_ylabel(labels[i]+' x',rotation=0, fontsize=20, labelpad=10)
+            else:
+                ax.set_ylabel(labels[i]+' y',rotation=0,fontsize=20, labelpad=10)
+            ax.yaxis.set_label_coords(-0.05,0.5)
+            
+    #plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
+    plt.savefig(title+"_"+".png")
+    plt.clf()
+    
+
+def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
     
     spk_id = 'mngu0'
     
@@ -400,8 +470,114 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.savefig(title+"_2d_"+".png")
     plt.clf()
+    
+def draw_2d_ieee(ema_data, ema_data_hat, mode, title, **args):
+    
+    spk_id = 'mngu0'
+    
+    #fig = plt.figure(figsize=(18, 8))
+    #fig.suptitle(title,fontsize=20)
+    colors = ['b', 'g', 'r', 'c', 'm', 'y']
+    labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
+    means = []
+    stds = []
+    stats_path = os.path.join(os.path.join('data/emadata', 'cin_us_'+spk_id), 'ema.stats')
+    with open(stats_path) as f:
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            line_list = line.split(" ")
+            means.append(float(line_list[0]))
+            stds.append(float(line_list[1]))
+    means = np.array(means)
+    stds = np.array(stds)
+    
+    #means = means * 0.3
 
-def vis_gestures(model, **args):
+    data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
+    data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
+    data_x_2 = ema_data[:,1*2] * stds[2] + means[2]
+    data_y_2 = ema_data[:,1*2+1] * stds[3] + means[3]
+    data_x_3 = ema_data[:,2*2] * stds[4] + means[4]
+    data_y_3 = ema_data[:,2*2+1] * stds[5] + means[5]
+    data_x_4 = ema_data[:,3*2] * stds[6] + means[6]
+    data_y_4 = ema_data[:,3*2+1] * stds[7] + means[7]
+    data_x_5 = ema_data[:,4*2] * stds[8] + means[8]
+    data_y_5 = ema_data[:,4*2+1] * stds[9] + means[9]
+    data_x_6 = ema_data[:,5*2] * stds[10] + means[10]
+    data_y_6 = ema_data[:,5*2+1] * stds[11] + means[11]
+
+
+    indices_new = 2 * np.arange((len(data_x_1) // 2) + 1)
+    data_x_1 = data_x_1[indices_new]
+    data_x_2 = data_x_2[indices_new]
+    data_x_3 = data_x_3[indices_new]
+    data_x_4 = data_x_4[indices_new]
+    data_x_5 = data_x_5[indices_new]
+    data_x_6 = data_x_6[indices_new]
+    data_y_1 = data_y_1[indices_new]
+    data_y_2 = data_y_2[indices_new]
+    data_y_3 = data_y_3[indices_new]
+    data_y_4 = data_y_4[indices_new]
+    data_y_5 = data_y_5[indices_new]
+    data_y_6 = data_y_6[indices_new]
+    fig = plt.figure(figsize=(10, 10))
+
+#     plt.quiver(data_x_1[:-1], data_y_1[:-1], data_x_1[1:]-data_x_1[:-1], data_y_1[1:]-data_y_1[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue dorsum', color='red')
+#     plt.quiver(data_x_2[:-1], data_y_2[:-1], data_x_2[1:]-data_x_2[:-1], data_y_2[1:]-data_y_2[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue blade', color='blue')
+#     plt.quiver(data_x_3[:-1], data_y_3[:-1], data_x_3[1:]-data_x_3[:-1], data_y_3[1:]-data_y_3[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue tip', color='black')
+#     plt.quiver(data_x_4[:-1], data_y_4[:-1], data_x_4[1:]-data_x_4[:-1], data_y_4[1:]-data_y_4[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='lower incisor', color='orange')
+#     plt.quiver(data_x_5[:-1], data_y_5[:-1], data_x_5[1:]-data_x_5[:-1], data_y_5[1:]-data_y_5[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='upper lip', color='purple')
+#     plt.quiver(data_x_6[:-1], data_y_6[:-1], data_x_6[1:]-data_x_6[:-1], data_y_6[1:]-data_y_6[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='lower lip', color='grey')
+
+    #plt.plot(data_x_2, data_y_2, label='tongue blade')
+    #plt.plot(data_x_3, data_y_3, label='tongue tip')
+    #plt.plot(data_x_4, data_y_4, label='lower incisor')
+    #plt.plot(data_x_5, data_y_5, label='upper lip')
+    #plt.plot(data_x_6, data_y_6, label='lower lip')
+    
+    len_data = len(data_x_1)
+    
+#     plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=4)
+#     plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=10)
+#     plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=4)
+#     plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=10)
+#     plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=4)
+#     plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=10)
+#     plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=4)
+#     plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=10)
+#     plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=4)
+#     plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=10)
+#     plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=4)
+#     plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=10)
+    
+    plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=1)
+    plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=3)
+    plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=1)
+    plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=3)
+    plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=1)
+    plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=3)
+    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=1)
+    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=3)
+    plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=1)
+    plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=3)
+    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=1)
+    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=3)
+
+    #plt.xticks(fontsize=50)
+    #plt.yticks(fontsize=50)
+    plt.xticks([])
+    plt.yticks([])
+    #plt.legend(prop={'size': 50})
+    plt.title(title,fontdict = {'fontsize' : 50})
+    #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
+    plt.savefig(title+"_2d_"+".png")
+    plt.clf()
+    
+    
+
+def vis_gestures_ema(model, **args):
     #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
     if args['vq_resynthesis']:
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
@@ -409,11 +585,26 @@ def vis_gestures(model, **args):
         gestures = model.gesture_weight.unsqueeze(1)
     
     ema_id, wav_path, mel_data, text_trans = ema2info(**args)
-    draw_mel(mels=mel_data, mode=ema_id, title=text_trans)
+    draw_mel_ema(mels=mel_data, mode=ema_id, title=text_trans)
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
         
-        draw_kinematics(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
-        draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_kinematics_ema(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+    
+        
+def vis_gestures_ieee(model, **args):
+    #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
+    if args['vq_resynthesis']:
+        gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
+    else:
+        gestures = model.gesture_weight.unsqueeze(1)
+    
+    #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
+    for i in range(args['num_gestures']):
+        gesture_index = i
+        
+        draw_kinematics_ieee(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_2d_ieee(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
     
