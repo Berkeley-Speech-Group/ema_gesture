@@ -76,7 +76,7 @@ def kmeans_ema(spk_id_setting='mngu0'):
     super_ema_data_huge = torch.stack(super_ema_data_huge_list, dim=0).to(device) #[716316, 492]
 
     print("shape of original data is:", super_ema_data_huge.shape) #[716316, 492]
-    super_ema_data_huge = super_ema_data_huge[:50000]
+    super_ema_data_huge = super_ema_data_huge[:200000]
     print("shape of inp for kmeans is:", super_ema_data_huge.shape) #[716316, 492]
     
     return super_ema_data_huge
@@ -91,12 +91,13 @@ class VQ_Dataset:
         return self.data[index]
         
 if __name__ == '__main__':
+    os.system("sudo rm -rf *.png")
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     super_ema_data_huge = kmeans_ema()
     vq_dataset = VQ_Dataset(super_ema_data_huge)
-    vq_dataloader = torch.utils.data.DataLoader(dataset=vq_dataset, batch_size=1000, shuffle=True)
+    vq_dataloader = torch.utils.data.DataLoader(dataset=vq_dataset, batch_size=100, shuffle=True)
     vq_vae = VQ_VAE2().to(device)
-    for e in tqdm(range(100)):
+    for e in tqdm(range(1)):
         for i, batch in enumerate(vq_dataloader):
             loss_vq, _, _, = vq_vae(batch)
             #print(vq_vae._embedding.weight)

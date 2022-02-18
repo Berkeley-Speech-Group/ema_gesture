@@ -229,7 +229,7 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
             #loss = 0 * loss_vq
 
             loss.backward()
-            print(model.vq_model._embedding.weight)
+            #print(model.vq_model._embedding.weight)
             optimizer.step()
             if args['pr_joint']:
                 sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, ctc=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_ctc.item(), 100*loss_vq.item()))

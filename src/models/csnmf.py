@@ -8,7 +8,7 @@ from utils import get_sparsity
 
 import sys
 sys.path.append("src/models/")
-from vq import VQ_VAE
+from vq import *
 
 class PR_Model(nn.Module):
     def __init__(self, **args):
@@ -224,7 +224,7 @@ class VQ_AE_CSNMF(nn.Module):
         self.pr_joint = args['pr_joint']
         self.fixed_length = args['fixed_length']
 
-        self.vq_model = VQ_VAE(**args)
+        self.vq_model = VQ_VAE2()
         #self.vq_model2 = VQ_VAE2(**args)
 
         if self.pr_joint:
@@ -233,6 +233,7 @@ class VQ_AE_CSNMF(nn.Module):
 
     def forward(self, x, ema_inp_lens):
         #shape of x is [B,t,A]
+        ori_inp = x
 
         time_steps = x.shape[1]
         x = x.transpose(-1, -2) #[B, A, t]
@@ -262,7 +263,40 @@ class VQ_AE_CSNMF(nn.Module):
         x_unfold_reshape = x_unfold.reshape(x_unfold.shape[0], x_unfold.shape[1], x_unfold.shape[2]*x_unfold.shape[3]) #[B,T,A*win]
         
         
-        loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)   
+        #loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)   
+        
+        #let us focus on vanilla super-vector
+        ####$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+        print("0", ori_inp.shape)
+        ema_data_huge = ori_inp.reshape(-1, ori_inp.shape[-1]) #[t_super, 12]
+        print("1", ema_data_huge.shape)
+        ema_data_huge = ema_data_huge.transpose(0, 1) #[12, t_super]
+        print("2", ema_data_huge.shape)
+
+        ########################################################
+        ####################Then we are going to perform kmeans
+        ###########win_size = 41
+        ###########inp is [12, 716316]
+        ###########it should be [12, 716316*41]
+        ###########So we pad 20 on both sides
+        ema_data_huge_pad = F.pad(ema_data_huge, pad=(20,20,0,0), mode='constant', value=0) #[12, t_super]
+        print("3", ema_data_huge_pad.shape)
+        ####################################
+
+        super_ema_data_huge_list = []
+        for t in range(ema_data_huge.shape[1]):
+            win_ema = ema_data_huge_pad[:,t:t+41] #[12, 41]
+            win_ema = win_ema.reshape(-1) #[12*41=492]
+            super_ema_data_huge_list.append(win_ema)
+
+        super_ema_data_huge = torch.stack(super_ema_data_huge_list, dim=0) #[t_super, 492]
+        print("4", super_ema_data_huge.shape)
+        
+        x_super_batch = super_ema_data_huge
+        
+        ####$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+        
+        loss_vq, _, _ = self.vq_model(x_super_batch) #inp shape should be [B, 12*41]
         
         self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size).permute(1,0,2) #[40, 12, 41] -> (12, 40, 41)
         
