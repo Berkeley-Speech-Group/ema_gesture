@@ -223,12 +223,13 @@ def trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, em
                 loss += args['entropy_c_factor']*(entropy_c)
             if args['pr_joint']:
                 loss += args['pr_joint_factor']*loss_ctc
-            #if args['vq_resynthesis']:
-            #    loss += args['vq_factor']*loss_vq
+            if args['vq_resynthesis']:
+                loss += args['vq_factor']*loss_vq.mean()
                 
             #loss = 0 * loss_vq
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1000)
             #print(model.vq_model._embedding.weight)
             optimizer.step()
             if args['pr_joint']:

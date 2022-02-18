@@ -209,7 +209,8 @@ def vis_H(model, **args):
     ax.set_xticks([])
     ax.set_yticks([])
     #plt.title(text_trans, fontsize=30)
-    plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"), bbox_inches='tight')
+    #plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"), bbox_inches='tight')
+    plt.savefig('latent_H'+"_"+".png", bbox_inches='tight')
     plt.clf()
 
     #we try to print rows that are "activated"
@@ -290,7 +291,9 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
             else:
                 ax.set_ylabel(labels[i]+' y',rotation=0,fontsize=20, labelpad=10)
             ax.yaxis.set_label_coords(-0.05,0.5)
-    plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
+            
+    #plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
+    plt.savefig(title+"_"+".png")
     plt.clf()
     
 
