@@ -324,11 +324,9 @@ def draw_kinematics_ema(ema_data, ema_data_hat, mode, title, **args):
     
 def draw_kinematics_ieee(ema_data, ema_data_hat, mode, title, **args):
     
-
     ema_data = ema_data.squeeze(0)
     if mode == 'kinematics':
         ema_data_hat = ema_data_hat.squeeze(0)
-    
     
     x = np.arange(ema_data.shape[0])
 
@@ -477,36 +475,37 @@ def draw_2d_ieee(ema_data, ema_data_hat, mode, title, **args):
     
     #fig = plt.figure(figsize=(18, 8))
     #fig.suptitle(title,fontsize=20)
-    colors = ['b', 'g', 'r', 'c', 'm', 'y']
-    labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
-    means = []
-    stds = []
-    stats_path = os.path.join(os.path.join('data/emadata', 'cin_us_'+spk_id), 'ema.stats')
-    with open(stats_path) as f:
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            line_list = line.split(" ")
-            means.append(float(line_list[0]))
-            stds.append(float(line_list[1]))
-    means = np.array(means)
-    stds = np.array(stds)
-    
+    colors = ['red', 'blue', 'black', 'orange', 'purple', 'grey', 'yellow', 'pink']
+    labels = ['TR', 'TB', 'TT', 'UL', 'LL', 'ML','JAW', 'JAWL']
+    means = np.load('data/ieee/mean.npy').reshape(-1)
+    stds = np.load('data/ieee/stds.npy').reshape(-1)
+
     #means = means * 0.3
 
-    data_x_1 = ema_data[:,0*2] * stds[0] + means[0]
-    data_y_1 = ema_data[:,0*2+1] * stds[1] + means[1]
-    data_x_2 = ema_data[:,1*2] * stds[2] + means[2]
-    data_y_2 = ema_data[:,1*2+1] * stds[3] + means[3]
-    data_x_3 = ema_data[:,2*2] * stds[4] + means[4]
-    data_y_3 = ema_data[:,2*2+1] * stds[5] + means[5]
-    data_x_4 = ema_data[:,3*2] * stds[6] + means[6]
-    data_y_4 = ema_data[:,3*2+1] * stds[7] + means[7]
-    data_x_5 = ema_data[:,4*2] * stds[8] + means[8]
-    data_y_5 = ema_data[:,4*2+1] * stds[9] + means[9]
-    data_x_6 = ema_data[:,5*2] * stds[10] + means[10]
-    data_y_6 = ema_data[:,5*2+1] * stds[11] + means[11]
+    data_x_1 = ema_data[:,0*3] * stds[0] + means[0]
+    data_y_1 = ema_data[:,0*3+1] * stds[1] + means[1]
+    data_z_1 = ema_data[:,0*3+2] * stds[2] + means[2]
+    data_x_2 = ema_data[:,1*3] * stds[3] + means[3]
+    data_y_2 = ema_data[:,1*3+1] * stds[4] + means[4]
+    data_z_2 = ema_data[:,1*3+2] * stds[5] + means[5]
+    data_x_3 = ema_data[:,2*3] * stds[6] + means[6]
+    data_y_3 = ema_data[:,2*3+1] * stds[7] + means[7]
+    data_z_3 = ema_data[:,2*3+2] * stds[8] + means[8]
+    data_x_4 = ema_data[:,3*3] * stds[9] + means[9]
+    data_y_4 = ema_data[:,3*3+1] * stds[10] + means[10]
+    data_z_4 = ema_data[:,3*3+2] * stds[11] + means[11]
+    data_x_5 = ema_data[:,4*3] * stds[12] + means[12]
+    data_y_5 = ema_data[:,4*3+1] * stds[13] + means[13]
+    data_z_5 = ema_data[:,4*3+2] * stds[14] + means[14]
+    data_x_6 = ema_data[:,5*3] * stds[15] + means[15]
+    data_y_6 = ema_data[:,5*3+1] * stds[16] + means[16]
+    data_z_6 = ema_data[:,5*3+2] * stds[17] + means[17]
+    data_x_7 = ema_data[:,6*3] * stds[18] + means[18]
+    data_y_7 = ema_data[:,6*3+1] * stds[19] + means[19]
+    data_z_7 = ema_data[:,6*3+2] * stds[20] + means[20]
+    data_x_8 = ema_data[:,7*3] * stds[21] + means[21]
+    data_y_8 = ema_data[:,7*3+1] * stds[22] + means[22]
+    data_z_8 = ema_data[:,7*3+2] * stds[23] + means[23]
 
 
     indices_new = 2 * np.arange((len(data_x_1) // 2) + 1)
@@ -516,13 +515,28 @@ def draw_2d_ieee(ema_data, ema_data_hat, mode, title, **args):
     data_x_4 = data_x_4[indices_new]
     data_x_5 = data_x_5[indices_new]
     data_x_6 = data_x_6[indices_new]
+    data_x_7 = data_x_7[indices_new]
+    data_x_8 = data_x_8[indices_new]
     data_y_1 = data_y_1[indices_new]
     data_y_2 = data_y_2[indices_new]
     data_y_3 = data_y_3[indices_new]
     data_y_4 = data_y_4[indices_new]
     data_y_5 = data_y_5[indices_new]
     data_y_6 = data_y_6[indices_new]
-    fig = plt.figure(figsize=(10, 10))
+    data_y_7 = data_y_7[indices_new]
+    data_y_8 = data_y_8[indices_new]
+    data_z_1 = data_z_1[indices_new]
+    data_z_2 = data_z_2[indices_new]
+    data_z_3 = data_z_3[indices_new]
+    data_z_4 = data_z_4[indices_new]
+    data_z_5 = data_z_5[indices_new]
+    data_z_6 = data_z_6[indices_new]
+    data_z_7 = data_z_7[indices_new]
+    data_z_8 = data_z_8[indices_new]
+    #fig = plt.figure(figsize=(10, 10, 10))
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
 
 #     plt.quiver(data_x_1[:-1], data_y_1[:-1], data_x_1[1:]-data_x_1[:-1], data_y_1[1:]-data_y_1[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue dorsum', color='red')
 #     plt.quiver(data_x_2[:-1], data_y_2[:-1], data_x_2[1:]-data_x_2[:-1], data_y_2[1:]-data_y_2[:-1], scale_units='xy', angles='xy', width=0.003, scale=1, headwidth=9, label='tongue blade', color='blue')
@@ -551,26 +565,32 @@ def draw_2d_ieee(ema_data, ema_data_hat, mode, title, **args):
 #     plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=10)
 #     plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=4)
 #     plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=10)
-    
-    plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=1)
-    plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=3)
-    plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=1)
-    plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=3)
-    plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=1)
-    plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=3)
-    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=1)
-    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=3)
-    plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=1)
-    plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=3)
-    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=1)
-    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=3)
+
+    #colors = ['red', 'blue', 'black', 'orange', 'purple', 'grey', 'yellow', 'pink']
+    #labels = ['TR', 'TB', 'TT', 'UL', 'LL', 'ML','JAW', 'JAWL']    
+    ax.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], data_z_1[:len_data//2+5], color='red', linewidth=1)
+    ax.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], data_z_1[len_data//2:], label='TR', color='red', linewidth=3)
+    ax.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], data_z_2[:len_data//2+5], color='blue', linewidth=1)
+    ax.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], data_z_2[len_data//2:], label='TB', color='blue', linewidth=3)
+    ax.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], data_z_3[:len_data//2+5], color='black', linewidth=1)
+    ax.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], data_z_3[len_data//2:], label='TT', color='black', linewidth=3)
+    ax.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], data_z_4[:len_data//2+5], color='orange', linewidth=1)
+    ax.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], data_z_4[len_data//2:], label='UL', color='orange', linewidth=3)
+    ax.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], data_z_5[:len_data//2+5], color='purple', linewidth=1)
+    ax.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], data_z_5[len_data//2:], label='LL', color='purple', linewidth=3)
+    ax.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], data_z_6[:len_data//2+5], color='grey', linewidth=1)
+    ax.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], data_z_6[len_data//2:], label='ML', color='grey', linewidth=3)
+    ax.plot(data_x_7[:len_data//2+5], data_y_7[:len_data//2+5], data_z_7[:len_data//2+5], color='yellow', linewidth=1)
+    ax.plot(data_x_7[len_data//2:], data_y_7[len_data//2:], data_z_7[len_data//2:], label='JAW', color='purple', linewidth=3)
+    ax.plot(data_x_8[:len_data//2+5], data_y_8[:len_data//2+5], data_z_8[:len_data//2+5], color='pink', linewidth=1)
+    ax.plot(data_x_8[len_data//2:], data_y_8[len_data//2:], data_z_8[len_data//2:], label='JAWL', color='grey', linewidth=3)
 
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)
     plt.xticks([])
     plt.yticks([])
-    #plt.legend(prop={'size': 50})
-    plt.title(title,fontdict = {'fontsize' : 50})
+    plt.legend(prop={'size': 10})
+    plt.title(title,fontdict = {'fontsize' : 10})
     #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.savefig(title+"_2d_"+".png")
     plt.clf()
