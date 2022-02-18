@@ -153,7 +153,10 @@ class AE_CSNMF(nn.Module):
             self.conv_decoder_weight = nn.Parameter(kmeans_centers)
             self.gesture_weight = self.conv_decoder_weight
         elif args['dataset'] == 'ieee':
-            self.gesture_weight = nn.Parameter(torch.randn(self.num_pellets, self.num_gestures, self.win_size)) #[24, 40, 41]
+            #self.gesture_weight = nn.Parameter(torch.randn(self.num_pellets, self.num_gestures, self.win_size)) #[24, 40, 41]
+            kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_ieee.npy')) #[40, 24*41=984]
+            kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 24, 41]
+            kmeans_centers = kmeans_centers.permute(1,0,2) #[24, 40,41]
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)

@@ -344,7 +344,7 @@ def draw_kinematics_ieee(ema_data, ema_data_hat, mode, title, **args):
             ax.plot(x, _data,c=colors[i], label='ori')
             #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
             if mode == 'kinematics':
-                ax.plot(x, ema_data_hat[:,i*3+j],c=colors[i], label='rec', linestyle='dashed', linewidth=10)
+                ax.plot(x, ema_data_hat[:,i*3+j],c=colors[i], label='rec', linestyle='dashed', linewidth=3)
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
