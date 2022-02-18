@@ -5,7 +5,6 @@ from tqdm import tqdm
 
 path = 'data/rtMRI'
 
-
 print("Convert track mat files to npy....")
 
 for spk_id in os.listdir(path):

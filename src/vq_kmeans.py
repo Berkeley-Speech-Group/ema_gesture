@@ -7,6 +7,7 @@ import random
 from kmeans_pytorch import kmeans
 from vq import *
 from tqdm import tqdm
+from utils import *
 
 def kmeans_ema(spk_id_setting='mngu0'):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -89,18 +90,23 @@ class VQ_Dataset:
     def __getitem__(self, index):
         return self.data[index]
         
-    
-
 if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     super_ema_data_huge = kmeans_ema()
     vq_dataset = VQ_Dataset(super_ema_data_huge)
-    vq_dataloader = torch.utils.data.DataLoader(dataset=vq_dataset, batch_size=100, shuffle=True)
+    vq_dataloader = torch.utils.data.DataLoader(dataset=vq_dataset, batch_size=1000, shuffle=True)
     vq_vae = VQ_VAE2().to(device)
     for e in tqdm(range(100)):
         for i, batch in enumerate(vq_dataloader):
             loss_vq, _, _, = vq_vae(batch)
-            print(vq_vae._embedding.weight)
+            #print(vq_vae._embedding.weight)
             
-    np.save("data/kmeans_pretrain/kmeans_centers_vq1.npy", vq_vae._embedding.weight.detach().cpu().numpy())
+    #np.save("data/kmeans_pretrain/kmeans_centers_vq1.npy", vq_vae._embedding.weight.detach().cpu().numpy())
+    
+    gestures = vq_vae._embedding.weight.reshape(40, 12, 41).permute(1,0,2).unsqueeze(1)
+
+    print("draw gestures")
+    for i in range(40):
+        gesture_index = i
+        draw_2d(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index))
 

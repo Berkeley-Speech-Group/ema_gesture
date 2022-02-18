@@ -296,13 +296,15 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
 
 def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     
+    spk_id = 'mngu0'
+    
     #fig = plt.figure(figsize=(18, 8))
     #fig.suptitle(title,fontsize=20)
     colors = ['b', 'g', 'r', 'c', 'm', 'y']
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
     means = []
     stds = []
-    stats_path = os.path.join(os.path.join('data/emadata', 'cin_us_'+args['spk_id']), 'ema.stats')
+    stats_path = os.path.join(os.path.join('data/emadata', 'cin_us_'+spk_id), 'ema.stats')
     with open(stats_path) as f:
         while True:
             line = f.readline()
@@ -392,7 +394,8 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     plt.yticks([])
     #plt.legend(prop={'size': 50})
     plt.title(title,fontdict = {'fontsize' : 50})
-    plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
+    #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
+    plt.savefig(title+"_2d_"+".png")
     plt.clf()
 
 def vis_gestures(model, **args):

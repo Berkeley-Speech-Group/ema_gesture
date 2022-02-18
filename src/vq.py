@@ -15,9 +15,9 @@ class VQ_VAE(nn.Module):
         self._num_embeddings = num_embeddings
         self._embedding = nn.Embedding(self._num_embeddings, self._embedding_dim)
 
-        kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_vq1.npy')) #[40, 12*41=492]
+        #kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_vq1.npy')) #[40, 12*41=492]
         print("hjhjhjh")
-        self._embedding.weight.data = kmeans_centers
+        #self._embedding.weight.data = kmeans_centers
         #self._embedding.weight.data.uniform_(-1/self._num_embeddings, 1/self._num_embeddings)
         self._commitment_cost = commitment_cost
 
@@ -91,10 +91,11 @@ class VQ_VAE2(nn.Module):
         self._num_embeddings = num_embeddings
         self._embedding = nn.Embedding(self._num_embeddings, self._embedding_dim)
 
-        kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_40.npy')) #[40, 12*41=492]
+        #kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_40.npy')) #[40, 12*41=492]
         #self._embedding.weight.data = kmeans_centers
         #self._embedding.weight.data.uniform_(-1/self._num_embeddings, 1/self._num_embeddings)
         self._commitment_cost = commitment_cost
+        print("This is vqvae2")
 
         self.register_buffer('_ema_cluster_size', torch.zeros(num_embeddings))
         self._ema_w = nn.Parameter(torch.Tensor(num_embeddings, self._embedding_dim))
