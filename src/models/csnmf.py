@@ -138,26 +138,29 @@ class AE_CSNMF(nn.Module):
         self.fixed_length = args['fixed_length']
 
         ######Apply weights of k-means to gestures
-        if self.num_gestures == 20:
-            kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_20.npy')) #[40, 12*41=492]
-        elif self.num_gestures == 40:
-            kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_40.npy')) #[40, 12*41=492]
-        elif self.num_gestures == 60:
-            kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_60.npy')) #[40, 12*41=492]
-        elif self.num_gestures == 80:
-            kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_80.npy')) #[40, 12*41=492]
-        kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
-        kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
+        if args['dataset'] == 'ema':
+            if self.num_gestures == 20:
+                kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_20.npy')) #[40, 12*41=492]
+            elif self.num_gestures == 40:
+                kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_40.npy')) #[40, 12*41=492]
+            elif self.num_gestures == 60:
+                kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_60.npy')) #[40, 12*41=492]
+            elif self.num_gestures == 80:
+                kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_80.npy')) #[40, 12*41=492]
+            kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
+            kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
 
-        self.conv_decoder_weight = nn.Parameter(kmeans_centers)
-        self.gesture_weight = self.conv_decoder_weight
+            self.conv_decoder_weight = nn.Parameter(kmeans_centers)
+            self.gesture_weight = self.conv_decoder_weight
+        elif args['dataset'] == 'ieee':
+            self.gesture_weight = nn.Parameter(torch.randn(self.num_pellets, self.num_gestures, self.win_size)) #[24, 40, 41]
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
 
     def forward(self, x, ema_inp_lens):
         #shape of x is [B,t,A]
-
+        
         time_steps = x.shape[1]
         x = x.transpose(-1, -2) #[B, A, t]
         H = F.relu(self.conv_encoder1(x)) #[B, C, t]

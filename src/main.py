@@ -10,9 +10,9 @@ import torch.nn.functional as F
 # from torchnmf.nmf import NMF2D, NMFD
 # from torchnmf.metrics import kl_div
 
-from dataloader import EMA_Dataset, collate
+from dataloader import EMA_Dataset, IEEE_Dataset, collate
 from models.csnmf import AE_CSNMF, PR_Model, VQ_AE_CSNMF
-from trainer import trainer_resynthesis, trainer_pr, eval_resynthesis, eval_pr
+from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
 
@@ -90,6 +90,11 @@ if __name__ == "__main__":
         print("Fixed Length")
     else:
         print("No Fixed Length")
+        
+    if args.dataset == 'ema':
+        args.num_pellets = 12
+    elif args.dataset == 'ieee':
+        args.num_pellets = 24
 
     if args.pr_ema or args.pr_mel or args.pr_stft or args.pr_h or args.pr_wav2vec2 or args.pr_mfcc:
         model = PR_Model(**vars(args)).to(device)
@@ -129,16 +134,30 @@ if __name__ == "__main__":
         vis_gestures(model, **vars(args))
         exit()
         
-    ema_dataset_train = EMA_Dataset(mode='train', **vars(args))     
-    ema_dataset_test = EMA_Dataset(mode='test', **vars(args))    
-    training_size = len(ema_dataset_train)
+    if args.dataset == 'ema':
+        dataset_train = EMA_Dataset(mode='train', **vars(args))     
+        dataset_test = EMA_Dataset(mode='test', **vars(args))    
+        dataloader_train = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
+        dataloader_test = torch.utils.data.DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)   
+        training_size = len(dataset_train)
         
-    ema_dataloader_train = torch.utils.data.DataLoader(dataset=ema_dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
-    ema_dataloader_test = torch.utils.data.DataLoader(dataset=ema_dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)    
+    elif args.dataset == 'ieee':
+        dataset_train = IEEE_Dataset(mode='train', **vars(args))     
+        dataset_test = IEEE_Dataset(mode='test', **vars(args))    
+        dataloader_train = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True)
+        dataloader_test = torch.utils.data.DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False)  
+        training_size = len(dataset_train)
+        
+    else:
+        print("No dataset specified!!")
+        exit()
+        
+    print("dwdwdwd", training_size)
+    
     
     if args.eval_pr:
         print("Eval PER:")
-        ctc_loss, per = _eval_pr(model, ema_dataloader_test, device, **vars(args))
+        ctc_loss, per = _eval_pr(model, dataloader_test, device, **vars(args))
         print("PER is: ", per)
         exit()
 
@@ -152,9 +171,12 @@ if __name__ == "__main__":
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.lr_decay_rate, patience=1, threshold=0.0001)
 
     if args.pr_mel or args.pr_ema or args.pr_stft or args.pr_wav2vec2 or args.pr_mfcc:
-        trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
+        trainer_pr(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
     elif args.resynthesis or args.vq_resynthesis:
-        trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
+        if args.dataset == 'ema':
+            trainer_resynthesis_ema(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
+        elif args.dataset == 'ieee':
+            trainer_resynthesis_ieee(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
     else:
         print("Error happens! No Training Function Specified!")
         exit()

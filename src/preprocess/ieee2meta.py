@@ -29,13 +29,9 @@ meta_list_test = meta_list[int(0.8*data_size):]
         
 with open("data/ieee/train_metalist_F0.txt", 'w') as f:
     for i in range(len(meta_list_train)):
-        f.write(meta_list_train[i])
-        if i != len(meta_list_train) - 1:
-            f.write("\n")
+        f.write(meta_list_train[i]+"\n")
             
 with open("data/ieee/test_metalist_F0.txt", 'w') as f:
     for i in range(len(meta_list_test)):
-        f.write(meta_list_test[i])
-        if i != len(meta_list_test) - 1:
-            f.write("\n")
+        f.write(meta_list_test[i]+"\n")
 

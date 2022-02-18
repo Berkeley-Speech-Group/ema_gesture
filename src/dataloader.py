@@ -199,7 +199,59 @@ class rtMRI_Dataset:
                     ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
 
         return ema_data, wav_data, mel_data, stft_data, mfcc_data, wav2vec2, lab_data_unique
+    
+    
+class IEEE_Dataset:
+    
+    def __init__(self, path='data/ieee', mode='train', **args):
+        
+        ####record paths for wav file and nema file
+        ####train/test = 80%/20%
 
+        self.segment_len = args['segment_len']
+        self.ema_paths = []
+        self.ema_npy_paths = []
+        self.lab_npy_paths = []
+        self.eval = args['vis_kinematics'] or args['vis_gestures']
+        self.mode = mode
+        self.fixed_length = args['fixed_length']
+        
+        if self.mode == 'train':
+            ema_metalist_path = 'data/ieee/train_metalist_F0.txt'
+        else:
+            ema_metalist_path = 'data/ieee/test_metalist_F0.txt'
+            
+        with open(ema_metalist_path) as f:
+            while True:
+                line = f.readline()
+                if not line:
+                    break
+                self.ema_npy_paths.append(line[:-1])
+                
+    
+        print("###############################all data start#############################################")
+        print("# of ema npys is ", len(self.ema_npy_paths)) #1390 for train and 348 for test
+        print("###################################all data end##########################################")
+
+
+    def __len__(self): 
+        return len(self.ema_npy_paths)
+
+    def __getitem__(self, index):
+        ema_npy_path = self.ema_npy_paths[index]
+        ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema, 24]
+        
+        ####################################
+        ########Adopt fixed 500 ema points
+        ########We should fix t because t is related to H
+        ####################################
+
+        if not self.eval:
+            if ema_data.shape[0] >= self.segment_len:
+                start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
+                ema_data = ema_data[start_point:start_point+self.segment_len]
+
+        return ema_data
 
 def collate(batch):
 
