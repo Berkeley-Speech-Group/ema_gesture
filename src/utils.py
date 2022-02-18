@@ -588,7 +588,6 @@ def draw_2d_ieee(ema_data, ema_data_hat, mode, title, **args):
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)
     ax.set_xlabel("x")
-
     ax.set_ylabel("y")
 
     ax.set_zlabel("z")
@@ -622,8 +621,8 @@ def vis_gestures_ieee(model, **args):
     if args['vq_resynthesis']:
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
-        gestures = model.gesture_weight.unsqueeze(1)
-        gestures = model.conv_decoder.weight
+        #gestures = model.gesture_weight.unsqueeze(1)
+        gestures = 60 * model.conv_decoder.weight
     
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):

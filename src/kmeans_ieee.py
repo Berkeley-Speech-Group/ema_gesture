@@ -49,8 +49,8 @@ def kmeans_ema(spk_id_setting='mngu0'):
     super_ema_data_huge = torch.stack(super_ema_data_huge_list, dim=0).to(device) #[297878, 984]
 
     print("shape of original data is:", super_ema_data_huge.shape) #[297878, 984]
-    super_ema_data_huge = super_ema_data_huge[:30000]
-    print("shape of inp for kmeans is:", super_ema_data_huge.shape) #[716316, 984]
+    super_ema_data_huge = super_ema_data_huge[:40000]
+    print("shape of inp for kmeans is:", super_ema_data_huge.shape) #[297878, 984]
     cluster_ids, cluster_centers = kmeans(X=super_ema_data_huge, num_clusters=40, distance='euclidean', device=device)
 
     print("kmeans finished!!")

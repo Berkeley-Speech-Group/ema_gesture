@@ -125,7 +125,7 @@ class AE_CSNMF(nn.Module):
         self.t = args['segment_len']
         self.num_pellets = args['num_pellets']
         self.num_gestures = args['num_gestures']
-        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=41,padding=20) #larger is better
         self.conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
         self.conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
         self.conv_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
@@ -172,11 +172,15 @@ class AE_CSNMF(nn.Module):
             kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 24, 41]
             kmeans_centers = kmeans_centers.permute(1,0,2) #[24, 40,41]
             #kmeans_centers = torch.randn(24,40,41)
-            self.conv_decoder_weight = nn.Parameter(kmeans_centers)
-            self.gesture_weight = self.conv_decoder_weight
+            #self.conv_decoder_weight = nn.Parameter(kmeans_centers)
+            #self.gesture_weight = self.conv_decoder_weight
             
         self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
-        #self.conv_decoder.weight.data = kmeans_centers.unsqueeze(1)
+
+        #torch.nn.init.normal_(self.conv_decoder.weight)
+        
+        self.conv_decoder.weight.data = kmeans_centers.unsqueeze(1)
+        self.conv_decoder.weight.data= self.conv_decoder.weight.data / 100
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
@@ -191,21 +195,26 @@ class AE_CSNMF(nn.Module):
         x = x.transpose(-1, -2) #[B, A, t]
         H = self.conv_encoder1(x) #[B, C, t]
         H = self.bn1(H)
-        H = self.conv_encoder2(H) #[B, C, t]
+        H = self.conv_encoder2(H)#[B, C, t]
         H = self.bn2(H)
         H = self.conv_encoder3(H) #[B, C, t]
         H = self.bn3(H)
-        H = self.conv_encoder4(H) #[B, C, t]
+        H = F.relu(self.conv_encoder4(H)) #[B, C, t]
         
-        H, _ = self.LSTM(H.transpose(-1,-2))
-        #print("hhjhj", H.shape)
-        H = H.transpose(-1,-2)
+        #print("11", torch.max(self.conv_decoder.weight))
+        
+        
+#         H, _ = self.LSTM(H.transpose(-1,-2))
+#         #print("hhjhj", H.shape)
+#         H = H.transpose(-1,-2)
         #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
         #H = F.relu(self.conv_encoder8(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder9(H)) #[B, C, t]
         H = F.relu(self.conv_encoder10(H)) #[B, C, t] . #Three encoder layer is the best!
+        #print("max", torch.max(H))
+        #print("min", torch.min(H))
         if self.pr_joint:
             if not self.fixed_length:
                 log_p_out, p_out, out_lens = self.pr_model(H.permute(0,2,1), ema_inp_lens)
