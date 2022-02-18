@@ -344,7 +344,7 @@ def draw_kinematics_ieee(ema_data, ema_data_hat, mode, title, **args):
             ax.plot(x, _data,c=colors[i], label='ori')
             #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
             if mode == 'kinematics':
-                ax.plot(x, ema_data_hat[:,i*3+j],c=colors[i], label='rec', linestyle='dashed', linewidth=3)
+                ax.plot(x, ema_data_hat[:,i*3+j],c=colors[i], label='rec', linestyle='dashed', linewidth=2)
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
@@ -581,14 +581,17 @@ def draw_2d_ieee(ema_data, ema_data_hat, mode, title, **args):
     ax.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], data_z_6[:len_data//2+5], color='grey', linewidth=1)
     ax.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], data_z_6[len_data//2:], label='ML', color='grey', linewidth=3)
     ax.plot(data_x_7[:len_data//2+5], data_y_7[:len_data//2+5], data_z_7[:len_data//2+5], color='yellow', linewidth=1)
-    ax.plot(data_x_7[len_data//2:], data_y_7[len_data//2:], data_z_7[len_data//2:], label='JAW', color='purple', linewidth=3)
+    ax.plot(data_x_7[len_data//2:], data_y_7[len_data//2:], data_z_7[len_data//2:], label='JAW', color='yellow', linewidth=3)
     ax.plot(data_x_8[:len_data//2+5], data_y_8[:len_data//2+5], data_z_8[:len_data//2+5], color='pink', linewidth=1)
-    ax.plot(data_x_8[len_data//2:], data_y_8[len_data//2:], data_z_8[len_data//2:], label='JAWL', color='grey', linewidth=3)
+    ax.plot(data_x_8[len_data//2:], data_y_8[len_data//2:], data_z_8[len_data//2:], label='JAWL', color='pink', linewidth=3)
 
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)
-    plt.xticks([])
-    plt.yticks([])
+    ax.set_xlabel("x")
+
+    ax.set_ylabel("y")
+
+    ax.set_zlabel("z")
     plt.legend(prop={'size': 10})
     plt.title(title,fontdict = {'fontsize' : 10})
     #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
@@ -620,6 +623,7 @@ def vis_gestures_ieee(model, **args):
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
         gestures = model.gesture_weight.unsqueeze(1)
+        gestures = model.conv_decoder.weight
     
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):

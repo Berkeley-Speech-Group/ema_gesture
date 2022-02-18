@@ -250,6 +250,8 @@ class IEEE_Dataset:
             if ema_data.shape[0] >= self.segment_len:
                 start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
                 ema_data = ema_data[start_point:start_point+self.segment_len]
+            else:
+                ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
 
         return ema_data
 

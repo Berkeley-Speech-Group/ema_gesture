@@ -371,14 +371,14 @@ def trainer_resynthesis_ieee(model, optimizer, lr_scheduler, ema_dataloader_trai
 
         print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
         
-        #if (e+1) % args['step_size'] == 0:
-        #    lr_scheduler.step()
+        if (e+1) % args['step_size'] == 0:
+            lr_scheduler.step()
         
         if (e+1) % args['eval_epoch'] == 0:
             ####start evaluation
             eval_resynthesis_ieee(model, ema_dataloader_test, device, **args)
 
-            lr_scheduler.step(rec_loss.item())
+            #lr_scheduler.step(rec_loss.item())
 
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
         #save the model every 10 epochs
