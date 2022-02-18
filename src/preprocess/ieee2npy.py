@@ -4,19 +4,20 @@ import scipy.io
 from tqdm import tqdm
 
 path = 'data/ieee'
+print("Convert ieee ema mat files to npy....")
 for spk_id in tqdm(os.listdir(path)):
     if not spk_id.startswith("F") and not spk_id.startswith("M"):
         continue
     spk_id_path = os.path.join(path, spk_id)
     spk_id_path = os.path.join(spk_id_path, 'data')
-    for mat_file in os.listdir(spk_id_path):
+    for mat_file in tqdm(os.listdir(spk_id_path)):
         if not mat_file.endswith(".mat"):
             continue
         if "palate" in mat_file:
             continue
         mat_id = mat_file[:-4]
         mat_path = os.path.join(spk_id_path, mat_file)
-        print(mat_path)
+        #print(mat_path)
         
         mat = scipy.io.loadmat(mat_path)
 
@@ -56,4 +57,6 @@ for spk_id in tqdm(os.listdir(path)):
         JAWL_data_p = np.array(JAWL[2][:,:3]) #[T,3]
 
         ema_data_p = np.concatenate((TR_data_p, TB_data_p, TT_data_p, UL_data_p, LL_data_p, ML_data_p, JAW_data_p, JAWL_data_p), axis=-1) #[T, 24]
+        
+        np.save(mat_path[:-4], ema_data_p)
         
