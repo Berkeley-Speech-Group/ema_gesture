@@ -251,6 +251,32 @@ def vis_kinematics_ema(model, **args):
     
     draw_kinematics(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
+def vis_kinematics_rtMRI(model, **args):
+    ######################################
+    ############The Original Data
+    #####################################
+    ema_data = np.load(args['test_ema_path']) #[t, 170,2]
+    ema_data = ema_data.reshape(ema_data.shape[0], -1)
+    ema_id = args['test_ema_path'].split("/")[-1][:-4]
+    #draw_kinematics(ema_data, mode=ema_id+'_ori', **args)
+
+    ######################################
+    ############Reconstruction
+    ######################################
+    ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
+    B = ema_data.shape[0]
+    T = ema_data.shape[1]
+    ema_len_batch = (torch.ones(B) * T).to(device)
+    
+    if args['pr_joint']:
+        ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
+    else:
+        ema_ori, ema_hat,_,_,_,_,_ ,_= model(ema_data, None)
+
+    ema_data_hat = ema_hat.transpose(-1, -2).cpu().detach().numpy()
+    
+    draw_kinematics_rtMRI(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
+    
     
 def vis_kinematics_ieee(model, **args):
     ######################################
@@ -325,6 +351,48 @@ def draw_kinematics_ema(ema_data, ema_data_hat, mode, title, **args):
     plt.clf()
     
 def draw_kinematics_ieee(ema_data, ema_data_hat, mode, title, **args):
+    
+    ema_data = ema_data.squeeze(0)
+    if mode == 'kinematics':
+        ema_data_hat = ema_data_hat.squeeze(0)
+    
+    x = np.arange(ema_data.shape[0])
+
+    fig = plt.figure(figsize=(18, 8))
+    fig.suptitle("kinematics")
+    colors = ['red', 'blue', 'black', 'orange', 'purple', 'grey', 'yellow', 'pink']
+    
+    outer = gridspec.GridSpec(8, 1, wspace=0.2, hspace=0.2)
+    labels = ['TR', 'TB', 'TT', 'UL', 'LL', 'ML','JAW', 'JAWL']
+    for i in range(8):
+        inner = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+        for j in range(3):
+            ax = plt.Subplot(fig, inner[j])
+            _data = ema_data[:,i*3+j] #shape is (win_size,)
+            ax.plot(x, _data,c=colors[i], label='ori')
+            #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
+            if mode == 'kinematics':
+                ax.plot(x, ema_data_hat[:,i*3+j],c=colors[i], label='rec', linestyle='dashed', linewidth=2)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            fig.add_subplot(ax)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            #ax.get_xaxis().set_ticks([])
+            #ax.get_yaxis().set_ticks([])
+            if j == 0:
+                ax.set_ylabel(labels[i]+' x',rotation=0, fontsize=20, labelpad=10)
+            else:
+                ax.set_ylabel(labels[i]+' y',rotation=0,fontsize=20, labelpad=10)
+            ax.yaxis.set_label_coords(-0.05,0.5)
+            
+    #plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
+    plt.savefig(title+"_"+".png")
+    plt.clf()
+    
+def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     
     ema_data = ema_data.squeeze(0)
     if mode == 'kinematics':
@@ -639,14 +707,13 @@ def vis_gestures_rtMRI(model, **args):
     if args['vq_resynthesis']:
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
-        gestures = model.gesture_weight.unsqueeze(1)
+        gestures = model.model.conv_decoder.weight
     
     ema_id, wav_path, mel_data, text_trans = ema2info(**args)
     draw_mel_ema(mels=mel_data, mode=ema_id, title=text_trans)
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        
         draw_kinematics_ema(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         
