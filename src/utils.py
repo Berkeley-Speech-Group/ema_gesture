@@ -405,7 +405,6 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     colors = ['red', 'blue', 'black', 'orange', 'purple', 'grey', 'yellow', 'pink']
     
     outer = gridspec.GridSpec(8, 1, wspace=0.2, hspace=0.2)
-    labels = ['TR', 'TB', 'TT', 'UL', 'LL', 'ML','JAW', 'JAWL']
     for i in range(8):
         inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
         for j in range(2):
@@ -538,6 +537,47 @@ def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
     #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.savefig(title+"_2d_"+".png")
     plt.clf()
+    
+    
+def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
+    
+    print("This is draw_2d rtMRI..........")
+    
+    means = np.load('data/rtMRI/mean.npy').reshape(-1)
+    stds = np.load('data/rtMRI/stds.npy').reshape(-1)
+    
+    data_x = []
+    data_y = []
+    
+    for i in range(6):
+        data_x.append(ema_data[:,i*2] * stds[i] + means[i])
+        data_y.append(ema_data[:,i*2] * stds[i] + means[i])
+        
+    indices_new = 2 * np.arange((len(data_x[0]) // 2) + 1)
+    
+    for i in range(6):
+        data_x[i] = data_x[i][indices_new]
+        data_y[i] = data_y[i][indices_new]
+        
+    fig = plt.figure(figsize=(10, 10))
+
+    len_data = len(data_x[0])
+    
+    for i in range(6):
+        plt.plot(data_x[i][:len_data//2+5], data_y[i][:len_data//2+5], color='red', linewidth=1)
+        plt.plot(data_x[i][len_data//2:], data_y[i][len_data//2:], color='red', linewidth=3)
+        
+    #plt.xticks(fontsize=50)
+    #plt.yticks(fontsize=50)
+    plt.xticks([])
+    plt.yticks([])
+    #plt.legend(prop={'size': 50})
+    plt.title(title,fontdict = {'fontsize' : 50})
+    #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
+    plt.savefig(title+"_2d_"+".png")
+    plt.clf()
+    
+    
     
 def draw_2d_ieee(ema_data, ema_data_hat, mode, title, **args):
     
@@ -712,7 +752,7 @@ def vis_gestures_rtMRI(model, **args):
     for i in range(args['num_gestures']):
         gesture_index = i
         draw_kinematics_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
-        draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_2d_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         
 
     
