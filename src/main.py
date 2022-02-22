@@ -95,6 +95,8 @@ if __name__ == "__main__":
         args.num_pellets = 12
     elif args.dataset == 'ieee':
         args.num_pellets = 24
+    elif args.dataset == 'rtMRI':
+        args.num_pellets = 340
 
     if args.pr_ema or args.pr_mel or args.pr_stft or args.pr_h or args.pr_wav2vec2 or args.pr_mfcc:
         model = PR_Model(**vars(args)).to(device)

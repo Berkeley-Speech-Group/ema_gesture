@@ -295,7 +295,8 @@ class rtMRI_Dataset:
     def __getitem__(self, index):
         ema_npy_path = self.ema_npy_paths[index]
         ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T, 170 or 190, 2]
-        print(ema_data.shape)
+        ema_data = ema_data[:,:170,:] #[T, 170, 2]
+        ema_data = ema_data.reshape(ema_data.shape[0], -1) #[T, 340]
         
         ####################################
         ########Adopt fixed 500 ema points
