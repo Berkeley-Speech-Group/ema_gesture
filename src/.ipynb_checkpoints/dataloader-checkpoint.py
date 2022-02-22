@@ -272,9 +272,9 @@ class rtMRI_Dataset:
         self.fixed_length = args['fixed_length']
         
         if self.mode == 'train':
-            ema_metalist_path = 'data/rtMRI/train_metalist_F_18.txt'
+            ema_metalist_path = 'data/rtMRI/train_metalist_all.txt'
         else:
-            ema_metalist_path = 'data/rtMRI/test_metalist_F_18.txt'
+            ema_metalist_path = 'data/rtMRI/test_metalist_all.txt'
             
         with open(ema_metalist_path) as f:
             while True:

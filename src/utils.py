@@ -186,6 +186,8 @@ def get_sparsity(H):
 def vis_H(model, **args):
     #ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
+    if args['dataset'] == 'rtMRI':
+        ema_data = ema_data.reshape(ema_data.shape[0], -1)
     ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
     B = ema_data.shape[0]
     T = ema_data.shape[1]
@@ -630,4 +632,23 @@ def vis_gestures_ieee(model, **args):
         
         draw_kinematics_ieee(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_2d_ieee(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        
+
+def vis_gestures_rtMRI(model, **args):
+    #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
+    if args['vq_resynthesis']:
+        gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
+    else:
+        gestures = model.gesture_weight.unsqueeze(1)
+    
+    ema_id, wav_path, mel_data, text_trans = ema2info(**args)
+    draw_mel_ema(mels=mel_data, mode=ema_id, title=text_trans)
+    #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
+    for i in range(args['num_gestures']):
+        gesture_index = i
+        
+        draw_kinematics_ema(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        
+
     
