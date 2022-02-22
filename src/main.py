@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from dataloader import EMA_Dataset, IEEE_Dataset, rtMRI_Dataset, collate
 from models.csnmf import AE_CSNMF, PR_Model, VQ_AE_CSNMF
 from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr
-from utils import vis_gestures_ema, vis_kinematics_ema, vis_gestures_ieee, vis_kinematics_ieee, vis_kinematics_rtMRI, vis_H
+from utils import vis_gestures_ema, vis_gestures_rtMRI, vis_kinematics_ema, vis_gestures_ieee, vis_kinematics_ieee, vis_kinematics_rtMRI, vis_H
 import seaborn as sns
 
 import warnings

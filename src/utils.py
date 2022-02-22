@@ -407,14 +407,14 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     outer = gridspec.GridSpec(8, 1, wspace=0.2, hspace=0.2)
     labels = ['TR', 'TB', 'TT', 'UL', 'LL', 'ML','JAW', 'JAWL']
     for i in range(8):
-        inner = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
-        for j in range(3):
+        inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+        for j in range(2):
             ax = plt.Subplot(fig, inner[j])
-            _data = ema_data[:,i*3+j] #shape is (win_size,)
+            _data = ema_data[:,i*2+j] #shape is (win_size,)
             ax.plot(x, _data,c=colors[i], label='ori')
             #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
             if mode == 'kinematics':
-                ax.plot(x, ema_data_hat[:,i*3+j],c=colors[i], label='rec', linestyle='dashed', linewidth=2)
+                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=2)
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
@@ -424,11 +424,11 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
             ax.spines['left'].set_visible(False)
             #ax.get_xaxis().set_ticks([])
             #ax.get_yaxis().set_ticks([])
-            if j == 0:
-                ax.set_ylabel(labels[i]+' x',rotation=0, fontsize=20, labelpad=10)
-            else:
-                ax.set_ylabel(labels[i]+' y',rotation=0,fontsize=20, labelpad=10)
-            ax.yaxis.set_label_coords(-0.05,0.5)
+            #if j == 0:
+            #    ax.set_ylabel(labels[i]+' x',rotation=0, fontsize=20, labelpad=10)
+            #else:
+            #    ax.set_ylabel(labels[i]+' y',rotation=0,fontsize=20, labelpad=10)
+            #ax.yaxis.set_label_coords(-0.05,0.5)
             
     #plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
     plt.savefig(title+"_"+".png")
@@ -707,14 +707,11 @@ def vis_gestures_rtMRI(model, **args):
     if args['vq_resynthesis']:
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
-        gestures = model.model.conv_decoder.weight
+        gestures = model.conv_decoder.weight
     
-    ema_id, wav_path, mel_data, text_trans = ema2info(**args)
-    draw_mel_ema(mels=mel_data, mode=ema_id, title=text_trans)
-    #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        draw_kinematics_ema(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_kinematics_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         
 
