@@ -10,7 +10,7 @@ import torch.nn.functional as F
 # from torchnmf.nmf import NMF2D, NMFD
 # from torchnmf.metrics import kl_div
 
-from dataloader import EMA_Dataset, IEEE_Dataset, collate
+from dataloader import EMA_Dataset, IEEE_Dataset, rtMRI_Dataset, collate
 from models.csnmf import AE_CSNMF, PR_Model, VQ_AE_CSNMF
 from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr
 from utils import vis_gestures_ema, vis_kinematics_ema, vis_gestures_ieee, vis_kinematics_ieee, vis_H
@@ -152,11 +152,17 @@ if __name__ == "__main__":
         dataloader_test = torch.utils.data.DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False)  
         training_size = len(dataset_train)
         
+    elif args.dataset == 'rtMRI':
+        dataset_train = rtMRI_Dataset(mode='train', **vars(args))     
+        dataset_test = rtMRI_Dataset(mode='test', **vars(args))    
+        dataloader_train = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True)
+        dataloader_test = torch.utils.data.DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False)  
+        training_size = len(dataset_train)
+        
     else:
         print("No dataset specified!!")
         exit()
         
-    print("dwdwdwd", training_size)
     
     
     if args.eval_pr:
@@ -181,6 +187,9 @@ if __name__ == "__main__":
             trainer_resynthesis_ema(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
         elif args.dataset == 'ieee':
             trainer_resynthesis_ieee(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
+        elif args.dataset == 'rtMRI':
+            trainer_resynthesis_ieee(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
+    
     else:
         print("Error happens! No Training Function Specified!")
         exit()
