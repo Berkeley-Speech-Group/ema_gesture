@@ -256,8 +256,7 @@ def vis_kinematics_rtMRI(model, **args):
     ######################################
     ############The Original Data
     #####################################
-    ema_data = np.load(args['test_ema_path']) #[t, 170,2]
-    ema_data = ema_data.reshape(ema_data.shape[0], -1)
+    ema_data = np.load(args['test_ema_path']) #[t, 340]
     ema_id = args['test_ema_path'].split("/")[-1][:-4]
     #draw_kinematics(ema_data, mode=ema_id+'_ori', **args)
 
@@ -538,7 +537,6 @@ def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     plt.clf()
     
     
-    
 def draw_3d_ieee(ema_data, ema_data_hat, mode, title, **args):
     
     spk_id = 'mngu0'
@@ -583,7 +581,6 @@ def draw_3d_ieee(ema_data, ema_data_hat, mode, title, **args):
     plt.clf()
     
     
-
 def vis_gestures_ema(model, **args):
     #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
     if args['vq_resynthesis']:
