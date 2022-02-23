@@ -5,6 +5,8 @@ import numpy as np
 import os
 import random
 from kmeans_pytorch import kmeans
+from fast_pytorch_kmeans import KMeans as kmeans_fast
+from tqdm import tqdm
 
 def kmeans_ema():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -41,25 +43,41 @@ def kmeans_ema():
     ###########So we pad 20 on both sides
     ema_data_huge_pad = F.pad(ema_data_huge, pad=(20,20,0,0), mode='constant', value=0) #[340, T_huge]
     ####################################
+    
 
     super_ema_data_huge_list = []
-    for t in range(ema_data_huge.shape[1]):
+    for t in tqdm(range(ema_data_huge.shape[1])):
         win_ema = ema_data_huge_pad[:,t:t+41] #[340, 41]
         win_ema = win_ema.reshape(-1) #[340*41=13940]
         super_ema_data_huge_list.append(win_ema)
+        if t == 100000:
+            break
 
     super_ema_data_huge = torch.stack(super_ema_data_huge_list, dim=0).to(device) #[452849, 13940]
+    
 
     print("shape of original data is:", super_ema_data_huge.shape) #[452849, 13940]
-    super_ema_data_huge = super_ema_data_huge[:40000]
-    print("shape of inp for kmeans is:", super_ema_data_huge.shape) #[452849, 13940]
-    cluster_ids, cluster_centers = kmeans(X=super_ema_data_huge, num_clusters=40, distance='euclidean', device=device)
+    
+    #     previous methods
+    #     super_ema_data_huge = super_ema_data_huge[:40000]
+    #     print("shape of inp for kmeans is:", super_ema_data_huge.shape) #[452849, 13940]
+    #     cluster_ids, cluster_centers = kmeans(X=super_ema_data_huge, num_clusters=40, distance='euclidean', device=device)
 
+    #     print("kmeans finished!!")
+    #     print("shape of centers of kmeans is", cluster_centers.shape)
+    #     print("shape of ids of kmeans is", cluster_ids.shape)
+    #     np.save("data/kmeans_pretrain/kmeans_centers_rtMRI.npy", cluster_centers.detach().numpy())
+    #     np.save("data/kmeans_pretrain/kmeans_ids_rtMRI.npy", cluster_ids.detach().numpy())
+    
+    kmeans_model = kmeans_fast(n_clusters=40, mode='euclidean', verbose=1)
+    x = super_ema_data_huge
+    cluster_ids = kmeans_model.fit_predict(x)    
+    cluster_centers = kmeans_model.centroids
     print("kmeans finished!!")
     print("shape of centers of kmeans is", cluster_centers.shape)
     print("shape of ids of kmeans is", cluster_ids.shape)
-    np.save("data/kmeans_pretrain/kmeans_centers_rtMRI.npy", cluster_centers.detach().numpy())
-    np.save("data/kmeans_pretrain/kmeans_ids_rtMRI.npy", cluster_ids.detach().numpy())
+    np.save("data/kmeans_pretrain/kmeans_centers_rtMRI.npy", cluster_centers.detach().cpu().numpy())
+    np.save("data/kmeans_pretrain/kmeans_ids_rtMRI.npy", cluster_ids.detach().cpu().numpy())    
     
 
 if __name__ == '__main__':
