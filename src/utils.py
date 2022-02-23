@@ -15,6 +15,7 @@ from librosa.filters import mel
 import librosa
 import librosa.display
 import math
+import random
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
 
@@ -541,7 +542,7 @@ def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
     
 def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     
-    print("This is draw_2d rtMRI..........")
+    #print("This is draw_2d rtMRI..........")
     
     means = np.load('data/rtMRI/mean.npy').reshape(-1)
     stds = np.load('data/rtMRI/stds.npy').reshape(-1)
@@ -549,13 +550,13 @@ def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     data_x = []
     data_y = []
     
-    for i in range(6):
+    for i in range(170):
         data_x.append(ema_data[:,i*2] * stds[i] + means[i])
-        data_y.append(ema_data[:,i*2] * stds[i] + means[i])
+        data_y.append(ema_data[:,i*2+1] * stds[i+1] + means[i+1])
         
     indices_new = 2 * np.arange((len(data_x[0]) // 2) + 1)
     
-    for i in range(6):
+    for i in range(170):
         data_x[i] = data_x[i][indices_new]
         data_y[i] = data_y[i][indices_new]
         
@@ -563,9 +564,14 @@ def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
 
     len_data = len(data_x[0])
     
-    for i in range(6):
-        plt.plot(data_x[i][:len_data//2+5], data_y[i][:len_data//2+5], color='red', linewidth=1)
-        plt.plot(data_x[i][len_data//2:], data_y[i][len_data//2:], color='red', linewidth=3)
+    number_of_colors = 170
+
+    colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+                 for i in range(number_of_colors)]
+    
+    for i in range(170):
+        plt.plot(data_x[i][:len_data//2+5], data_y[i][:len_data//2+5], color=colors[i], linewidth=1)
+        plt.plot(data_x[i][len_data//2:], data_y[i][len_data//2:], color=colors[i], linewidth=3)
         
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)

@@ -34,7 +34,6 @@ np.save(os.path.join(path, "stds"), stds)
 print("means", means)
 print("stds", stds)
 
-
 print("Finished Means and Stds")
 
 for spk_id in tqdm(os.listdir(path)):
@@ -51,7 +50,6 @@ for spk_id in tqdm(os.listdir(path)):
         if ema_data.shape[1] > 170:
             ema_data = ema_data[:,:170,:]
         ema_data = ema_data.reshape(ema_data.shape[0], -1) #[T, 340]
-        
         ema_data_norm = (ema_data - means) / stds
         
         np.save(npy_path[:-4], ema_data_norm)
