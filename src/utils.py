@@ -402,10 +402,12 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
 
     fig = plt.figure(figsize=(18, 8))
     fig.suptitle("kinematics")
-    colors = ['red', 'blue', 'black', 'orange', 'purple', 'grey', 'yellow', 'pink']
+    number_of_colors = 170
+    colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+                 for i in range(number_of_colors)]
     
-    outer = gridspec.GridSpec(8, 1, wspace=0.2, hspace=0.2)
-    for i in range(8):
+    outer = gridspec.GridSpec(20, 1, wspace=0.2, hspace=0.2)
+    for i in range(20):
         inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
@@ -413,7 +415,7 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
             ax.plot(x, _data,c=colors[i], label='ori')
             #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
             if mode == 'kinematics':
-                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=2)
+                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], linestyle='dashed', linewidth=2)
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
