@@ -527,6 +527,7 @@ def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     for i in range(170):
         plt.plot(data_x[i][:len_data//2+5], data_y[i][:len_data//2+5], color=colors[i], linewidth=1)
         plt.plot(data_x[i][len_data//2:], data_y[i][len_data//2:], color=colors[i], linewidth=3)
+        plt.annotate(str(i), (data_x[i][0], data_y[i][0]))
         
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)
