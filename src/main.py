@@ -159,8 +159,8 @@ if __name__ == "__main__":
     if args.dataset == 'ema':
         dataset_train = EMA_Dataset(mode='train', **vars(args))     
         dataset_test = EMA_Dataset(mode='test', **vars(args))    
-        dataloader_train = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True, collate_fn=collate)
-        dataloader_test = torch.utils.data.DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False, collate_fn=collate)   
+        dataloader_train = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True)
+        dataloader_test = torch.utils.data.DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False)   
         training_size = len(dataset_train)
         
     elif args.dataset == 'ieee':
@@ -187,15 +187,20 @@ if __name__ == "__main__":
         ctc_loss, per = _eval_pr(model, dataloader_test, device, **vars(args))
         print("PER is: ", per)
         exit()
-
-    if args.pr_mel or args.pr_mfcc or args.pr_joint or args.pr_stft:
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        
+    if args.ema2speech:
+        optim_g = torch.optim.AdamW(generator.parameters(), h.learning_rate, betas=[h.adam_b1, h.adam_b2])
+        optim_d = torch.optim.AdamW(itertools.chain(msd.parameters(), mpd.parameters()), h.learning_rate, betas=[h.adam_b1, h.adam_b2])
+        scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=h.lr_decay, last_epoch=last_epoch)
+        scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=h.lr_decay, last_epoch=last_epoch)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, weight_decay=5e-5, momentum=0.9)
-        #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.9)
-    #lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.lr_decay_rate, patience=10, threshold=0.0001)
+        if args.pr_mel or args.pr_mfcc or args.pr_joint or args.pr_stft:
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        else:
+            optimizer = torch.optim.SGD(model.parameters(), lr=0.001, weight_decay=5e-5, momentum=0.9)
+            #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.9)
+        #lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.lr_decay_rate, patience=10, threshold=0.0001)
 
     if args.pr_mel or args.pr_ema or args.pr_stft or args.pr_wav2vec2 or args.pr_mfcc:
         trainer_pr(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
@@ -207,7 +212,7 @@ if __name__ == "__main__":
         elif args.dataset == 'rtMRI':
             trainer_resynthesis_ieee(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
     elif args.ema2speech:
-        trainer_ema2speech(generator, mpd, msd, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
+        trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, scheduler_d, dataloader_train, dataloader_test, device, training_size, **vars(args))
     else:
         print("Error happens! No Training Function Specified!")
         exit()

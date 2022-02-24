@@ -80,28 +80,32 @@ class EMA_Dataset:
 
     def __getitem__(self, index):
         wav_path = self.wav_paths[index]
-        wav_data = loadWAV(wav_path) #[1, num_points]
-        mel_data = wav2mel(wav_data) #[T_mel, 80]
+        wav_data = loadWAV(wav_path) #[1, T_wav]
         ema_npy_path = self.ema_npy_paths[index]
         lab_npy_path = self.lab_npy_paths[index]
-        ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema_real, 12]
+        ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T_ema, 12]
         lab_data = torch.LongTensor(np.load(lab_npy_path)) #[T_lab]
         lab_data_unique = torch.unique_consecutive(lab_data) #[T_unique]
         
-        ####################################
-        ########Adopt fixed 500 ema points
-        ########We should fix t because t is related to H
-        ####################################
-
+        T_wav = wav_data.shape[1]
+        T_ema = ema_data.shape[0]
+        
         if not self.eval:
             if self.fixed_length:
                 if ema_data.shape[0] >= self.segment_len:
-                    start_point = int(random.random()*(ema_data.shape[0]-self.segment_len))
-                    ema_data = ema_data[start_point:start_point+self.segment_len]
+                    start_point_ema = int(random.random()*(ema_data.shape[0]-self.segment_len))
+                    start_point_wav = start_point_ema * 80
                 else:
                     ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
+                    wav_data = F.pad(wav_data, pad=(0, 80*self.segment_len-wav_data.shape[1], 0, 0), mode='constant', value=0)
+                    start_point_ema = 0
+                    start_point_wav = 0
+                    
+                ema_data = ema_data[start_point_ema:start_point_ema+self.segment_len] #[T_ema, 12]
+                wav_data = wav_data[:, start_point_wav:start_point_wav+self.segment_len*80] #[1, T_wav]
+                mel_data = wav2mel(wav_data) #[T_mel, 80]
 
-        return ema_data, wav_data, mel_data, lab_data_unique
+        return ema_data.transpose(-1, -2), wav_data.squeeze(0), mel_data, lab_data_unique
     
     
 class rtMRI_Dataset:

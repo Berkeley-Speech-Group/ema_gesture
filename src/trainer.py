@@ -293,7 +293,7 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
             f.write("CTC_loss is %.4f\n"%(sum(ctc_loss_e)/len(ctc_loss_e)))
             
             
-def trainer_ema2speech(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **args):
+def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, scheduler_d, dataloader_train, dataloader_test, device, training_size, **args):
 
     if args['pr_joint']:
         criterion = nn.CTCLoss(blank=42, zero_infinity=True)
@@ -314,76 +314,68 @@ def trainer_ema2speech(model, optimizer, lr_scheduler, ema_dataloader_train, ema
         loss_g_e = []
         print("PID is {}".format(os.getppid()))
             
-        for i, (ema_batch, mel_batch, stft_batch, mfcc_batch, wav2vec2_batch, ema_len_batch, mel_len_batch, stft_len_batch, mfcc_len_batch, wav2vec2_len_batch, lab_batch, lab_len_batch) in enumerate(ema_dataloader_train):
+        for i, (ema_data_batch, wav_data_batch, mel_data_batch, lab_data_unique_batch) in enumerate(ema_dataloader_train):
 
-            ema_batch = ema_batch.to(device)
-            ema_len_batch = ema_len_batch.to(device)
-            mel_batch = mel_batch.to(device)
+            ema_batch = ema_batch.to(device) #[B, 12, T_ema_seg]
+            mel_real = mel_batch.to(device) #[B, T_mel_seg], 80
+            wav_real = wav_data_batch.to(device) #[B, T_wav_seg]
             
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
-            model.train()
-            optimizer.zero_grad()
             
-            
-            
-            
-            
-            
-            rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
-            loss = args['rec_factor']*rec_loss
+            wav_g_hat = generator(ema_batch) #[B, T]
+            wav_g_hat_mel = wav2mel(wav_g_hat) #[B, T, 80]
 
-                
-            #loss = 0 * loss_vq
+            optim_d.zero_grad()
 
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1000)
-            #print(model.vq_model._embedding.weight)
-            optimizer.step()
-            if args['pr_joint']:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, ctc=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, loss_ctc.item(), 100*loss_vq.item()))
-            else:
-                sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f, loss_vq=%.4f " %(rec_loss.item(), sparsity_c, sparsity_t, entropy_t, entropy_c, 100*loss_vq.item()))
+            # MPD
+            y_df_hat_r, y_df_hat_g, _, _ = mpd(wav_real, wav_g_hat.detach())
+            loss_disc_f, losses_disc_f_r, losses_disc_f_g = discriminator_loss(y_df_hat_r, y_df_hat_g)
+
+            # MSD
+            y_ds_hat_r, y_ds_hat_g, _, _ = msd(wav_real, wav_g_hat.detach())
+            loss_disc_s, losses_disc_s_r, losses_disc_s_g = discriminator_loss(y_ds_hat_r, y_ds_hat_g)
+
+            loss_disc_all = loss_disc_s + loss_disc_f
+            loss_d_e.append(loss_disc_all.item())
+
+            loss_disc_all.backward()
+            optim_d.step()
+
+            # Generator
+            optim_g.zero_grad()
+
+            # L1 Mel-Spectrogram Loss
+            loss_mel = F.l1_loss(mel_real, wav_g_hat_mel) * 45
+
+            y_df_hat_r, y_df_hat_g, fmap_f_r, fmap_f_g = mpd(wav_real, wav_g_hat)
+            y_ds_hat_r, y_ds_hat_g, fmap_s_r, fmap_s_g = msd(wav_real, wav_g_hat)
+            loss_fm_f = feature_loss(fmap_f_r, fmap_f_g)
+            loss_fm_s = feature_loss(fmap_s_r, fmap_s_g)
+            loss_gen_f, losses_gen_f = generator_loss(y_df_hat_g)
+            loss_gen_s, losses_gen_s = generator_loss(y_ds_hat_g)
+            loss_gen_all = loss_gen_s + loss_gen_f + loss_fm_s + loss_fm_f + loss_mel
+
+            loss_gen_all.backward()
+            loss_g_e.append(loss_gen_all.item())
+            optim_g.step()            
+
+            sys.stdout.write("loss_g=%.4f, loss_d=%.4f" %(loss_gen_all.item(), loss_disc_all.item()))
 
             rec_loss_e.append(rec_loss.item())
-            sparsity_c_e.append(float(sparsity_c))
-            sparsity_t_e.append(float(sparsity_t))
-            if args['pr_joint']:
-                ctc_loss_e.append(float(loss_ctc))
-            writer.add_scalar('Rec_Loss_train', rec_loss.item(), count)
-            writer.add_scalar('Sparsity_H_c_train', sparsity_c, count)
-            writer.add_scalar('Sparsity_H_t_train', sparsity_t, count)
+            
+            #writer.add_scalar('Rec_Loss_train', rec_loss.item(), count)
             count += 1
-        if args['pr_joint']:
-            print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f, CTC_loss is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e), sum(ctc_loss_e)/len(ctc_loss_e)))
-        else:
-            print("|Epoch: %d Avg RecLoss is %.4f, Sparsity_c is %.4f, Sparsity_t is %.4f" %(e, sum(rec_loss_e)/len(rec_loss_e), sum(sparsity_c_e)/len(sparsity_c_e), sum(sparsity_t_e)/len(sparsity_t_e)))
+        print("|Epoch: %d Avg Loss_G is %.4f, Avg Loss_D is %.4f" %(e, sum(loss_g_e)/len(loss_g_e), sum(loss_d_e)/len(loss_d_e)))
         
-        #if (e+1) % args['step_size'] == 0:
-        #    lr_scheduler.step()
-        
-        if (e+1) % args['eval_epoch'] == 0:
-            ####start evaluation
-            eval_resynthesis_ema(model, ema_dataloader_test, device, **args)
-            if args['pr_joint']:
-                ctc_loss, per = eval_pr(model, ema_dataloader_test, device, **args)
-                lr_scheduler.step(ctc_loss)
-            else:
-                lr_scheduler.step(rec_loss.item())
-
         torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
-        #save the model every 10 epochs
         if (e + 1) % 10 == 0:
             torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
 
         #write into log after each epoch
         f.write("***************************************************************************")
         f.write("epoch: %d \n" %(e))
-        f.write("Ave loss is %.4f\n" %(sum(rec_loss_e)/len(rec_loss_e)))
-        f.write("Sparsity_c is %.4f\n"%(sum(sparsity_c_e)/len(sparsity_c_e)))
-        f.write("Sparsity_t is %.4f\n"%(sum(sparsity_t_e)/len(sparsity_t_e)))
-        f.write("batch_size is {} \n".format(args['batch_size']))
-        if args['pr_joint']:
-            f.write("CTC_loss is %.4f\n"%(sum(ctc_loss_e)/len(ctc_loss_e)))
+        f.write("Ave loss_g is %.4f\n" %(sum(loss_g_e)/len(loss_g_e)))
+        f.write("Ave loss_d is %.4f\n" %(sum(loss_d_e)/len(loss_d_e)))
         
             
 def trainer_resynthesis_ieee(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **args):
