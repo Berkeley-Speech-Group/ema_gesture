@@ -6,6 +6,7 @@ import random
 import os
 import sys
 from utils import wav2mel, wav2stft, wav2mfcc
+from utils_mel import mel_spectrogram
 
 def loadWAV(filename, max_points=32000):
     waveform, sr = torchaudio.load(filename) #sr=16000
@@ -103,9 +104,9 @@ class EMA_Dataset:
                     
                 ema_data = ema_data[start_point_ema:start_point_ema+self.segment_len] #[T_ema, 12]
                 wav_data = wav_data[:, start_point_wav:start_point_wav+self.segment_len*80] #[1, T_wav]
-                mel_data = wav2mel(wav_data) #[T_mel, 80]
+                mel_data = mel_spectrogram(y=wav_data, n_fft=1024, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).squeeze(0).transpose(-1,-2) #[T_mel, 80]
 
-        return ema_data.transpose(-1, -2), wav_data.squeeze(0), mel_data, lab_data_unique
+        return ema_data.transpose(-1, -2), wav_data.squeeze(0), mel_data
     
     
 class rtMRI_Dataset:

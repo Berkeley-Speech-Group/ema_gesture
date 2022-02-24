@@ -14,9 +14,14 @@ from models.hifigan_model import Generator, MultiPeriodDiscriminator, MultiScale
 from models.utils_hifigan import plot_spectrogram, scan_checkpoint, load_checkpoint, save_checkpoint
 from utils import vis_gestures_ema, vis_gestures_rtMRI, vis_kinematics_ema, vis_gestures_ieee, vis_kinematics_ieee, vis_kinematics_rtMRI, vis_H
 
-from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr
+from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr, trainer_ema2speech
 
 import seaborn as sns
+import json
+import itertools
+from utils import AttrDict, build_env
+import itertools
+
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -191,8 +196,8 @@ if __name__ == "__main__":
     if args.ema2speech:
         optim_g = torch.optim.AdamW(generator.parameters(), h.learning_rate, betas=[h.adam_b1, h.adam_b2])
         optim_d = torch.optim.AdamW(itertools.chain(msd.parameters(), mpd.parameters()), h.learning_rate, betas=[h.adam_b1, h.adam_b2])
-        scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=h.lr_decay, last_epoch=last_epoch)
-        scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=h.lr_decay, last_epoch=last_epoch)
+        scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=h.lr_decay, last_epoch=-1)
+        scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=h.lr_decay, last_epoch=-1)
     else:
         if args.pr_mel or args.pr_mfcc or args.pr_joint or args.pr_stft:
             optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
