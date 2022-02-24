@@ -93,18 +93,29 @@ class EMA_Dataset:
         
         if not self.eval:
             if self.fixed_length:
-                if ema_data.shape[0] >= self.segment_len:
-                    start_point_ema = int(random.random()*(ema_data.shape[0]-self.segment_len))
-                    start_point_wav = start_point_ema * 80
-                else:
-                    ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
-                    wav_data = F.pad(wav_data, pad=(0, 80*self.segment_len-wav_data.shape[1], 0, 0), mode='constant', value=0)
-                    start_point_ema = 0
-                    start_point_wav = 0
+#                 if ema_data.shape[0] >= self.segment_len:
+#                     start_point_ema = int(random.random()*(ema_data.shape[0]-self.segment_len))
+#                     start_point_wav = start_point_ema * 80
+#                 else:
+#                     ema_data = F.pad(ema_data, pad=(0, 0, 0, self.segment_len-ema_data.shape[0]), mode='constant', value=0)
+#                     wav_data = F.pad(wav_data, pad=(0, 80*self.segment_len-wav_data.shape[1], 0, 0), mode='constant', value=0)
+#                     start_point_ema = 0
+#                     start_point_wav = 0
+#                 print("ema ori len", ema_data.shape)
+#                 print("wav ori len", wav_data.shape)
                     
-                ema_data = ema_data[start_point_ema:start_point_ema+self.segment_len] #[T_ema, 12]
-                wav_data = wav_data[:, start_point_wav:start_point_wav+self.segment_len*80] #[1, T_wav]
-                mel_data = mel_spectrogram(y=wav_data, n_fft=1024, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).squeeze(0).transpose(-1,-2) #[T_mel, 80]
+#                 ema_data = ema_data[start_point_ema:start_point_ema+self.segment_len] #[T_ema, 12]
+#                 wav_data = wav_data[:, start_point_wav:start_point_wav+self.segment_len*80] #[1, T_wav]
+                
+#                 print("qwqwq", wav_data.shape[-1]/ema_data.shape[0])
+
+#                 print("start ema", start_point_ema)
+#                 print("start wav", start_point_wav)
+#                 print(wav_data.shape)
+#                 mel_data = mel_spectrogram(y=wav_data, n_fft=1025, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).squeeze(0).transpose(-1,-2) #[T_mel, 80]
+
+                    
+                mel_data = mel_spectrogram(y=wav_data, n_fft=1025, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).squeeze(0).transpose(-1,-2) #[T_mel, 80]
 
         return ema_data.transpose(-1, -2), wav_data.squeeze(0), mel_data
     

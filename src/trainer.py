@@ -323,14 +323,21 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
             wav_real = wav_data_batch.to(device) #[B, T_wav_seg]
             wav_real = wav_real.unsqueeze(1) #[B, 1, T_wav_seg]
             
-            print("11", wav_real.shape)
+            
             
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             
             wav_g_hat = generator(ema_batch) #[B, 1, T]
+            print("before", wav_real.shape)
+            print("before", wav_g_hat.shape)
             
-            print("22", wav_g_hat.shape)
-            wav_g_hat_mel = mel_spectrogram(y=wav_g_hat.cpu().detach().squeeze(1), n_fft=1024, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False)#[B, 80, T_mel]
+            T_min_wav = min(wav_real.shape[-1], wav_g_hat.shape[-1])
+            wav_real = wav_real[:,:,:T_min_wav]
+            wav_g_hat = wav_g_hat[:,:,:T_min_wav]
+            
+            print("after", wav_real.shape)
+            print("after", wav_g_hat.shape)
+            wav_g_hat_mel = mel_spectrogram(y=wav_g_hat.cpu().detach().squeeze(1), n_fft=1025, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).cuda()#[B, 80, T_mel]
 
             optim_d.zero_grad()
 
@@ -372,16 +379,14 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
             scheduler_d.step()
 
             sys.stdout.write("loss_g=%.4f, loss_d=%.4f" %(loss_gen_all.item(), loss_disc_all.item()))
-
-            rec_loss_e.append(rec_loss.item())
             
             count += 1
             
         print("|Epoch: %d Avg Loss_G is %.4f, Avg Loss_D is %.4f" %(e, sum(loss_g_e)/len(loss_g_e), sum(loss_d_e)/len(loss_d_e)))
         
-        torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+".pth"))
+        torch.save(generator.state_dict(), os.path.join(args['save_path'], "generator_best"+".pth"))
         if (e + 1) % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args['save_path'], "best"+str(e)+".pth"))
+            torch.save(generator.state_dict(), os.path.join(args['save_path'], "generator_best"+str(e)+".pth"))
 
         #write into log after each epoch
         f.write("***************************************************************************")
