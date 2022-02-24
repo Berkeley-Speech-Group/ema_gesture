@@ -7,13 +7,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from torchnmf.nmf import NMF2D, NMFD
-# from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset, IEEE_Dataset, rtMRI_Dataset, collate
 from models.csnmf import AE_CSNMF, PR_Model, VQ_AE_CSNMF
-from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr
+from models.hifigan_model import Generator, MultiPeriodDiscriminator, MultiScaleDiscriminator, feature_loss, generator_loss, discriminator_loss
+from models.utils_hifigan import plot_spectrogram, scan_checkpoint, load_checkpoint, save_checkpoint
 from utils import vis_gestures_ema, vis_gestures_rtMRI, vis_kinematics_ema, vis_gestures_ieee, vis_kinematics_ieee, vis_kinematics_rtMRI, vis_H
+
+from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_pr, eval_resynthesis_ema, eval_resynthesis_ieee, eval_pr
+
 import seaborn as sns
 
 import warnings
@@ -65,6 +67,8 @@ parser.add_argument('--pr_wav2vec2', action='store_true', help='')
 parser.add_argument('--pr_ema', action='store_true', help='')
 parser.add_argument('--pr_h', action='store_true', help='')
 parser.add_argument('--pr_joint', action='store_true', help='')
+parser.add_argument('--ema2speech', action='store_true', help='')
+parser.add_argument('--g2speech', action='store_true', help='')
 parser.add_argument('--pr_joint_factor', type=float, default=1, help='')
 parser.add_argument('--asr_wav', action='store_true', help='')
 parser.add_argument('--asr_ema', action='store_true', help='')
@@ -75,6 +79,7 @@ parser.add_argument('--vq', action='store_true', help='')
 parser.add_argument('--vq_only', action='store_true', help='to test the clustering performance')
 parser.add_argument('--eval_pr', action='store_true', help='')
 parser.add_argument('--pr_voicing', action='store_true', help='')
+parser.add_argument('--config', type=str, default='', help='')
 
 args = parser.parse_args()
 
@@ -104,6 +109,14 @@ if __name__ == "__main__":
         model = AE_CSNMF(**vars(args)).to(device)
     elif args.vq_resynthesis:
         model = VQ_AE_CSNMF(**vars(args)).to(device)
+    elif args.ema2speech:
+        with open(args.config) as f:
+            data = f.read()
+        json_config = json.loads(data)
+        h = AttrDict(json_config)
+        generator = Generator(h).to(device)
+        mpd = MultiPeriodDiscriminator().to(device)
+        msd = MultiScaleDiscriminator().to(device)
     else:
         print("Error!!! No Model Specified!!")
         exit()
@@ -193,7 +206,8 @@ if __name__ == "__main__":
             trainer_resynthesis_ieee(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
         elif args.dataset == 'rtMRI':
             trainer_resynthesis_ieee(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
-    
+    elif args.ema2speech:
+        trainer_ema2speech(generator, mpd, msd, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
     else:
         print("Error happens! No Training Function Specified!")
         exit()
