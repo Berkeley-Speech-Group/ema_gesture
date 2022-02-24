@@ -18,8 +18,6 @@ for spk_id in tqdm(os.listdir(path)):
         npy_id = npy_file[:-4]
         npy_path = os.path.join(track_path, npy_file)
         ema_data = np.load(npy_path) #[T, 170, 2]
-        if ema_data.shape[1] > 170:
-            ema_data = ema_data[:,:170,:]
         ema_data = ema_data.reshape(ema_data.shape[0], -1) #[T, 340]
         all_ema.append(ema_data)
 
@@ -47,8 +45,6 @@ for spk_id in tqdm(os.listdir(path)):
         npy_id = npy_file[:-4]
         npy_path = os.path.join(track_path, npy_file)
         ema_data = np.load(npy_path) #[T, 170, 2]
-        if ema_data.shape[1] > 170:
-            ema_data = ema_data[:,:170,:]
         ema_data = ema_data.reshape(ema_data.shape[0], -1) #[T, 340]
         ema_data_norm = (ema_data - means) / stds
         

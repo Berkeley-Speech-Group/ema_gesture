@@ -15,7 +15,7 @@ def kmeans_ema():
     mode = 'train'
     path = 'data/rtMRI'
     
-    ema_metalist_path = 'data/rtMRI/train_metalist_all.txt'
+    ema_metalist_path = 'data/rtMRI/train_metalist_F_28.txt'
 
     with open(ema_metalist_path) as f:
         while True:

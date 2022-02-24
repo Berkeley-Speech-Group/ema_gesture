@@ -47,7 +47,6 @@ for spk_id in os.listdir(path):
             
             #length is 4 right now, we only need frame[0], frame[1], frame[2]
             
-
             segment0 = frame[0]
             while(len(segment0) == 1):
                 segment0 = segment0[0]

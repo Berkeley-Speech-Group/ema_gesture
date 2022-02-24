@@ -169,7 +169,6 @@ if __name__ == "__main__":
         exit()
         
     
-    
     if args.eval_pr:
         print("Eval PER:")
         ctc_loss, per = _eval_pr(model, dataloader_test, device, **vars(args))
