@@ -19,7 +19,7 @@ from trainer import trainer_resynthesis_ema, trainer_resynthesis_ieee, trainer_p
 import seaborn as sns
 import json
 import itertools
-from utils import AttrDict, build_env
+from utils import AttrDict, build_env, ema2speech_func
 import itertools
 
 
@@ -73,6 +73,7 @@ parser.add_argument('--pr_ema', action='store_true', help='')
 parser.add_argument('--pr_h', action='store_true', help='')
 parser.add_argument('--pr_joint', action='store_true', help='')
 parser.add_argument('--ema2speech', action='store_true', help='')
+parser.add_argument('--test_ema2speech', action='store_true', help='')
 parser.add_argument('--g2speech', action='store_true', help='')
 parser.add_argument('--pr_joint_factor', type=float, default=1, help='')
 parser.add_argument('--asr_wav', action='store_true', help='')
@@ -114,7 +115,7 @@ if __name__ == "__main__":
         model = AE_CSNMF(**vars(args)).to(device)
     elif args.vq_resynthesis:
         model = VQ_AE_CSNMF(**vars(args)).to(device)
-    elif args.ema2speech:
+    elif args.ema2speech or args.test_ema2speech:
         with open(args.config) as f:
             data = f.read()
         json_config = json.loads(data)
@@ -122,6 +123,11 @@ if __name__ == "__main__":
         generator = Generator(h).to(device)
         mpd = MultiPeriodDiscriminator().to(device)
         msd = MultiScaleDiscriminator().to(device)
+        if args.test_ema2speech:
+            ema2speech_func(args.test_ema_path, generator)
+            print("Finished Generation")
+            exit()
+            
     else:
         print("Error!!! No Model Specified!!")
         exit()

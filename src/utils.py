@@ -17,7 +17,16 @@ import librosa.display
 import math
 import random
 import shutil
+import soundfile as sf
 
+def ema2speech_func(ema_path, generator):
+    
+    ema_data = torch.FloatTensor(np.load(ema_path))#[T_ema, 12]
+    ema_data = ema_data.unsqueeze(0).transpose(-1,-2).cuda() #[1,12, T_ema]
+    wav_g_hat = generator(ema_data) #[B,T_ema,12]  -> [B, 1, T_wav], B=1
+    sf.write("gen"+".wav", wav_g_hat.cpu().detach().numpy().reshape(-1),16000,'PCM_24')
+    
+    
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
