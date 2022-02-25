@@ -124,6 +124,13 @@ if __name__ == "__main__":
         mpd = MultiPeriodDiscriminator().to(device)
         msd = MultiScaleDiscriminator().to(device)
         if args.test_ema2speech:
+            print("Perform ema2speech")
+            if not os.path.exists(args.model_path):
+                print("Model not exist and we just create the new model......")
+            else:
+                print("Model Exists and Loading........")
+                print("Model Path is " + args.model_path)
+                generator.loadParameters(args.model_path)
             ema2speech_func(args.test_ema_path, generator)
             print("Finished Generation")
             exit()
