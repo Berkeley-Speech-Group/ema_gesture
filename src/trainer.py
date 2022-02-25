@@ -314,6 +314,7 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
     for e in range(args['num_epochs']):
         loss_d_e = []
         loss_g_e = []
+        loss_mel_e = []
         print("PID is {}".format(os.getppid()))
             
         for i, (ema_batch, wav_data_batch, mel_batch) in enumerate(dataloader_train):
@@ -360,7 +361,8 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
             # L1 Mel-Spectrogram Loss
             #print("1", mel_real.shape)
             #print("2", wav_g_hat_mel.shape)
-            loss_mel = F.l1_loss(mel_real, wav_g_hat_mel.transpose(-1,-2)) * 45
+            loss_mel = F.l1_loss(mel_real, wav_g_hat_mel.transpose(-1,-2)) * 100
+            loss_mel_e.append(loss_mel)
 
             y_df_hat_r, y_df_hat_g, fmap_f_r, fmap_f_g = mpd(wav_real, wav_g_hat)
             y_ds_hat_r, y_ds_hat_g, fmap_s_r, fmap_s_g = msd(wav_real, wav_g_hat)
@@ -375,13 +377,13 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
             optim_g.step()       
             
 
-            sys.stdout.write("loss_g=%.4f, loss_d=%.4f" %(loss_gen_all.item(), loss_disc_all.item()))
+            sys.stdout.write("loss_mel=%.4f, loss_g=%.4f, loss_d=%.4f" %(loss_mel.item(), loss_gen_all.item(), loss_disc_all.item()))
             count += 1
             
         scheduler_g.step()
         scheduler_d.step()
             
-        print("|Epoch: %d Avg Loss_G is %.4f, Avg Loss_D is %.4f" %(e, sum(loss_g_e)/len(loss_g_e), sum(loss_d_e)/len(loss_d_e)))
+        print("|Epoch: %d Ave Loss_mel is $.4f , Avg Loss_G is %.4f, Avg Loss_D is %.4f" %(e, sum(loss_mel_e)/len(loss_mel_e), sum(loss_g_e)/len(loss_g_e), sum(loss_d_e)/len(loss_d_e)))
         
         torch.save(generator.state_dict(), os.path.join(args['save_path'], "generator_best"+".pth"))
         if (e + 1) % 10 == 0:
