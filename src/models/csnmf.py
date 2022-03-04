@@ -185,8 +185,7 @@ class AE_CSNMF(nn.Module):
         #torch.nn.init.normal_(self.conv_decoder.weight)
         
         self.conv_decoder.weight.data = kmeans_centers.unsqueeze(1)
-        print("sdqdqdq")
-        #self.conv_decoder.weight.data= self.conv_decoder.weight.data / 100
+        self.conv_decoder.weight.data= self.conv_decoder.weight.data / 100
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)

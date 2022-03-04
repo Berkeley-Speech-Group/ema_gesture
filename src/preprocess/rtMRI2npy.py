@@ -7,6 +7,9 @@ path = 'data/rtMRI'
 
 print("Convert track mat files to npy....")
 
+flag = True
+
+
 for spk_id in os.listdir(path):
     
     if not spk_id.startswith("F") and not spk_id.startswith("M"):
@@ -26,9 +29,11 @@ for spk_id in os.listdir(path):
         num_frames = len(res[0])
 
         track_array = []
+        
 
         for t in range(num_frames):
             frame_array = []
+            seg_label_array = []
             
             frame = res[0][t]
             
@@ -53,6 +58,7 @@ for spk_id in os.listdir(path):
             segment0_v = segment0[0]
             segment0_i = segment0[1]
             segment0_mu = segment0[2]
+            
 
             segment1 = frame[1]
             while(len(segment1) == 1):
@@ -67,6 +73,12 @@ for spk_id in os.listdir(path):
             segment2_v = segment2[0]
             segment2_i = segment2[1]
             segment2_mu = segment2[2]
+            
+            if flag and "F_18" in spk_id:
+                np.save("data/rtMRI/"+spk_id+"/segment0", np.array(segment0_i))
+                np.save("data/rtMRI/"+spk_id+"/segment1", np.array(segment1_i))
+                np.save("data/rtMRI/"+spk_id+"/segment2", np.array(segment2_i))
+                flag = False
 
             frame_array.append(segment0_v)
             frame_array.append(segment1_v)
@@ -77,7 +89,13 @@ for spk_id in os.listdir(path):
             track_array.append(frame_array)
             
             
+            
         track_array = np.concatenate(track_array, axis=0) #[T, 170, 2]
+        
+        track_array = track_array.reshape(track_array.shape[0], -1) #[T, 340]
+        if track_array.shape[-1] != 340:
+            continue
+
         #print(track_array.shape)
         np.save(track_mat_path[:-4], track_array)
         

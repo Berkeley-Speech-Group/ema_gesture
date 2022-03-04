@@ -15,7 +15,7 @@ def kmeans_ema():
     mode = 'train'
     path = 'data/rtMRI'
     
-    ema_metalist_path = 'data/rtMRI/train_metalist_F_28.txt'
+    ema_metalist_path = 'data/rtMRI/train_metalist_F_18.txt'
 
     with open(ema_metalist_path) as f:
         while True:
@@ -28,8 +28,9 @@ def kmeans_ema():
 
     ema_list = []
     for ema_npy_path in ema_npy_paths:
+        if not os.path.exists(ema_npy_path):
+            continue
         ema_data = torch.FloatTensor(np.load(ema_npy_path)) #[T, 170, 2]
-        ema_data = ema_data.reshape(ema_data.shape[0], -1) #[T, 340]
         ema_list.append(ema_data)
     ema_data_huge = torch.cat(ema_list, dim=0) #[T_huge, 340]
     ema_data_huge = ema_data_huge.transpose(0, 1) #[340, T_huge] = [340, 452849]

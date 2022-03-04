@@ -275,16 +275,19 @@ class rtMRI_Dataset:
         self.fixed_length = args['fixed_length']
         
         if self.mode == 'train':
-            ema_metalist_path = 'data/rtMRI/train_metalist_all.txt'
+            ema_metalist_path = 'data/rtMRI/train_metalist_F_18.txt'
         else:
-            ema_metalist_path = 'data/rtMRI/test_metalist_all.txt'
+            ema_metalist_path = 'data/rtMRI/test_metalist_F_18.txt'
             
         with open(ema_metalist_path) as f:
             while True:
                 line = f.readline()
                 if not line:
                     break
+                if not os.path.exists(line[:-1]):
+                    continue
                 self.ema_npy_paths.append(line[:-1])
+
                 
     
         print("###############################all data start#############################################")

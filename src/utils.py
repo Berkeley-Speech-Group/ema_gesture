@@ -18,13 +18,46 @@ import math
 import random
 import shutil
 import soundfile as sf
+from utils_mel import mel_spectrogram
+from scipy.interpolate import make_interp_spline, BSpline
+
+def draw_mel0(mels, name):
+    #shape of mels should be [B,D=80, T]
+    #mels = F.relu(mels)
+    mels = mels.transpose(-1, -2)
+
+    for i in range(len(mels)):
+        #mel_i = mels[i]
+        #np.save("save_models/dsvae2/"+mode+"_mel_"+str(i)+".npy", mel_i.cpu().detach().numpy())
+        plt.imshow(mels[i][:,:].transpose(0,1).cpu().detach().numpy())
+        plt.savefig(name+"_mel_"+str(i)+".png")
+        plt.clf()
 
 def ema2speech_func(ema_path, generator):
+    raw_wav_path = ema_path.split("/")[0] + "/" + ema_path.split("/")[1] + "/" + ema_path.split("/")[2] + "/wav/" + ema_path.split("/")[4][:-4]  + ".wav"
+    raw_wav, _ = torchaudio.load(raw_wav_path)
     
     ema_data = torch.FloatTensor(np.load(ema_path))#[T_ema, 12]
     ema_data = ema_data.unsqueeze(0).transpose(-1,-2).cuda() #[1,12, T_ema]
     wav_g_hat = generator(ema_data) #[B,T_ema,12]  -> [B, 1, T_wav], B=1
+    print("max", torch.max(wav_g_hat))
+    print("min", torch.min(wav_g_hat))
+    print("wav_gen_shape", wav_g_hat.shape)
+    print("wav_raw_shape", raw_wav.shape)
+    mel_gen = mel_spectrogram(wav_g_hat.squeeze(0), n_fft=1025, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).squeeze(0).transpose(-1,-2) #[T_mel, 80]
+    mel_raw = mel_spectrogram(raw_wav, n_fft=1025, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).squeeze(0).transpose(-1,-2) #[T_mel, 80]
+    
+    draw_mel0(mel_gen.unsqueeze(0).transpose(-1, -2), name='gen')
+    draw_mel0(mel_raw.unsqueeze(0).transpose(-1, -2), name='raw')
+    
+    print(mel_raw.shape)
+    print(mel_gen.shape)
+    
+
+    #print("Mel delta:", F.l1_loss(mel_raw, mel_gen, reduction='mean'))
+    wav_g_hat = wav_g_hat * 10
     sf.write("gen"+".wav", wav_g_hat.cpu().detach().numpy().reshape(-1),16000,'PCM_24')
+    sf.write("raw"+".wav", raw_wav.numpy().reshape(-1),16000,'PCM_24')
     
     
 
@@ -211,8 +244,6 @@ def get_sparsity(H):
 def vis_H(model, **args):
     #ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    if args['dataset'] == 'rtMRI':
-        ema_data = ema_data.reshape(ema_data.shape[0], -1)
     ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
     B = ema_data.shape[0]
     T = ema_data.shape[1]
@@ -224,6 +255,8 @@ def vis_H(model, **args):
         ema_ori, ema_hat, latent_H, _, _, _, _, _ = model(ema_data, None)
 
     latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
+    
+    latent_H = latent_H[:,:latent_H.shape[1]//6]
     
     plt.figure(figsize=(20,15)) 
     ax = plt.gca()
@@ -246,7 +279,7 @@ def vis_H(model, **args):
     sparse_indices = []
     for i in range(sparsity_t.shape[1]):
         print(sparsity_t[0][i])
-        if sparsity_t[0][i] < 0.88:
+        if sparsity_t[0][i] < 0.80:
             sparse_indices.append(i)
     print("sparse gesture indices", sparse_indices)
 
@@ -520,6 +553,26 @@ def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
     
     
 def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
+    segment_0 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment0.npy")
+    segment_1 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment1.npy")
+    segment_2 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment2.npy")
+    # print("segment0", segment_0)
+    # print("segment1", segment_1)
+    # print("segment2", segment_2)
+    # print("segment0_shape", segment_0.shape) #[70,1]
+    # print("segment1_shape", segment_1.shape) #[40,1]
+    # print("segment2_shape", segment_2.shape) #[60,1]
+    
+    segment_all = []
+    prev_segment_label = None
+    segment_0 = list(segment_0.reshape(-1))
+    segment_1 = list(segment_1.reshape(-1))
+    segment_2 = list(segment_2.reshape(-1))
+    
+    segment_1 = list(len(set(segment_0)) + np.array(segment_1))
+    segment_2 = list(len(set(segment_0+segment_1)) + np.array(segment_2))
+    
+    segment_labs = segment_0 + segment_1 + segment_2
     
     #print("This is draw_2d rtMRI..........")
     
@@ -548,16 +601,237 @@ def draw_2d_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
                  for i in range(number_of_colors)]
     
+    pre_seg_lab = None
+    
     for i in range(170):
-        plt.plot(data_x[i][:len_data//2+5], data_y[i][:len_data//2+5], color=colors[i], linewidth=1)
-        plt.plot(data_x[i][len_data//2:], data_y[i][len_data//2:], color=colors[i], linewidth=3)
-        plt.annotate(str(i), (data_x[i][0], data_y[i][0]))
+
+        plt.plot(data_x[i][:len_data//2+5], data_y[i][:len_data//2+5], color=colors[segment_labs[i]], linewidth=1)
+        plt.plot(data_x[i][len_data//2:], data_y[i][len_data//2:], color=colors[segment_labs[i]], linewidth=3)
+        #plt.annotate(str(i), (data_x[i][0], data_y[i][0]))
+        cur_seg_lab = segment_labs[i]
+        if pre_seg_lab == None:
+            pre_seg_lab = cur_seg_lab
+        else:
+            if cur_seg_lab != pre_seg_lab:
+                break
         
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)
     plt.xticks([])
     plt.yticks([])
     #plt.legend(prop={'size': 50})
+    plt.title(title,fontdict = {'fontsize' : 50})
+    #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
+    plt.savefig(title+"_2d_"+".png")
+    plt.clf()
+    
+def draw_new_rtMRI(ema_data, ema_data_hat, mode, title, **args):
+    
+    
+    segment_0 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment0.npy")
+    segment_1 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment1.npy")
+    segment_2 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment2.npy")
+    # print("segment0", segment_0)
+    # print("segment1", segment_1)
+    # print("segment2", segment_2)
+    # print("segment0_shape", segment_0.shape) #[70,1]
+    # print("segment1_shape", segment_1.shape) #[40,1]
+    # print("segment2_shape", segment_2.shape) #[60,1]
+    
+    segment_all = []
+    prev_segment_label = None
+    segment_0 = list(segment_0.reshape(-1))
+    segment_1 = list(segment_1.reshape(-1))
+    segment_2 = list(segment_2.reshape(-1))
+    
+    segment_1 = list(len(set(segment_0)) + np.array(segment_1))
+    segment_2 = list(len(set(segment_0+segment_1)) + np.array(segment_2))
+    
+    segment_labs = segment_0 + segment_1 + segment_2
+    art_labs = []
+    art_labs_unique = []
+    for i in range(10):
+        art_labs.append("epiglottis")
+    art_labs_unique.append("epiglottis")
+    for i in range(10, 30):
+        art_labs.append("tongue")
+    art_labs_unique.append("tongue")
+    for i in range(30,35):
+        art_labs.append("lower teeth")
+    art_labs_unique.append("lower teeth")
+    for i in range(35 ,5):
+        art_labs.append("lower lip")
+    art_labs_unique.append("lower lip")
+    for i in range(45,60):
+        art_labs.append("chin")
+    art_labs_unique.append("chin")
+    for i in range(60,70):
+        art_labs.append("neck")
+    art_labs_unique.append("neck")
+    for i in range(70,80):
+        art_labs.append("arytenoid")
+    art_labs_unique.append("arytenoid")
+    for i in range(80,90):
+        art_labs.append("pharynx")
+    art_labs_unique.append("pharynx")
+    for i in range(90,105):
+        art_labs.append("back")
+    art_labs_unique.append("back")
+    for i in range(105, 110):
+        art_labs.append("trachea")
+    art_labs_unique.append("trachea")
+    for i in range(110, 120):
+        art_labs.append("hard palate")
+    art_labs_unique.append("hard palate")
+    for i in range(120, 135):
+        art_labs.append("velum")
+    art_labs_unique.append("velum")
+    for i in range(135,150):
+        art_labs.append("nasal cavity")
+    art_labs_unique.append("nasal cavity")
+    for i in range(150, 160):
+        art_labs.append("nose")
+    art_labs_unique.append("nose")
+    for i in range(160, 170):
+        art_labs.append("upper lip")
+    art_labs_unique.append("upper lip")
+    
+        
+    
+    #print("This is draw_2d rtMRI..........")
+    
+    means = np.load('data/rtMRI/mean.npy').reshape(-1)
+    stds = np.load('data/rtMRI/stds.npy').reshape(-1)
+    
+    data_x = []
+    data_y = []
+    
+    for i in range(170):
+        data_x.append(ema_data[:,i*2] * stds[2*i] + means[2*i])
+        data_y.append(ema_data[:,i*2+1] * stds[2*i+1] + means[2*i+1])
+#         data_x.append(ema_data[:,i*2])
+#         data_y.append(ema_data[:,i*2+1])
+        
+#     indices_new = 2 * np.arange((len(data_x[0]) // 2) + 1)
+    
+#     for i in range(170):
+#         data_x[i] = data_x[i][indices_new]
+#         data_y[i] = data_y[i][indices_new]
+        
+    fig = plt.figure(figsize=(10, 10))
+
+    len_data = len(data_x[0])
+    
+    number_of_colors = 20
+
+    colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+                 for i in range(number_of_colors)]
+    colors = ['red', 'orange', 'lawngreen', 'lightgreen', 'aqua', 'deepskyblue', 'royalblue', 'blueviolet',\
+          'fuchsia', 'yellow', 'crimson', 'thistle', 'cadetblue', 'lightgrey', 'lawngreen', 'slategray', 'peachpuff',\
+         'maroon', 'ivory', 'black', 'darkgrey', 'dimgrey']
+    
+    prev_seg_lab = None
+    
+    seg_indices = []
+    
+    for i in range(15):
+        seg_indices.append([])
+    
+    for i in range(170):
+        seg_indices[segment_labs[i]-1].append(i)
+        
+    data_x = np.array(data_x)
+    data_y = np.array(data_y)
+
+    for i in range(15):
+        seg_ind = np.array(seg_indices[i])
+
+        
+#         p1 = data_x[seg_ind][:,0].argsort()
+#         x1 = data_x[seg_ind][:,0][p1]
+#         y1 = data_y[seg_ind][:,0][p1]
+        
+#         p2 = data_x[seg_ind][:,5].argsort()
+#         x2 = data_x[seg_ind][:,5][p2]
+#         y2 = data_y[seg_ind][:,5][p2]
+        
+#         p3 = data_x[seg_ind][:,10].argsort()
+#         x3 = data_x[seg_ind][:,10][p3]
+#         y3 = data_y[seg_ind][:,10][p3]
+        
+#         p4 = data_x[seg_ind][:,15].argsort()
+#         x4 = data_x[seg_ind][:,15][p4]
+#         y4 = data_y[seg_ind][:,15][p4]
+        
+#         p5 = data_x[seg_ind][:,20].argsort()
+#         x5 = data_x[seg_ind][:,20][p5]
+#         y5 = data_y[seg_ind][:,20][p5]
+
+        
+#         xnew_1 = np.linspace(x1.min(), x1.max(), 300) 
+#         spl = make_interp_spline(x1, y1, k=1)  # type: BSpline
+#         power_smooth_1 = spl(xnew_1)
+        
+#         xnew_2 = np.linspace(x2.min(), x2.max(), 300) 
+#         spl = make_interp_spline(x2, y2, k=1)  # type: BSpline
+#         power_smooth_2 = spl(xnew_2)
+        
+#         xnew_3 = np.linspace(x3.min(), x3.max(), 300) 
+#         spl = make_interp_spline(x3, y3, k=1)  # type: BSpline
+#         power_smooth_3 = spl(xnew_3)
+        
+#         xnew_4 = np.linspace(x4.min(), x4.max(), 300) 
+#         spl = make_interp_spline(x4, y4, k=1)  # type: BSpline
+#         power_smooth_4 = spl(xnew_4)
+        
+#         xnew_5 = np.linspace(x5.min(), x5.max(), 300) 
+#         spl = make_interp_spline(x5, y5, k=1)  # type: BSpline
+#         power_smooth_5 = spl(xnew_5)        plt.plot(xnew_1, power_smooth_1, color=colors[i], linewidth=0.2)
+
+#         plt.plot(xnew_2, power_smooth_2, color=colors[i], linewidth=0.5)
+#         plt.plot(xnew_3, power_smooth_3, color=colors[i], linewidth=0.9)
+#         plt.plot(xnew_4, power_smooth_4, color=colors[i], linewidth=1.4)
+#         plt.plot(xnew_5, power_smooth_5, color=colors[i], linewidth=2, label=art_labs_unique[i])
+        
+        
+#         plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], linewidth=0.05)
+#         plt.plot(data_x[seg_ind][:,5], data_y[seg_ind][:,5], color=colors[i], linewidth=0.1)
+#         plt.plot(data_x[seg_ind][:,10], data_y[seg_ind][:,10], color=colors[i], linewidth=0.3)
+#         plt.plot(data_x[seg_ind][:,15], data_y[seg_ind][:,15], color=colors[i], linewidth=0.5)
+#         plt.plot(data_x[seg_ind][:,20], data_y[seg_ind][:,20], color=colors[i], linewidth=0.7)
+#         plt.plot(data_x[seg_ind][:,25], data_y[seg_ind][:,25], color=colors[i], linewidth=0.9)
+#         plt.plot(data_x[seg_ind][:,30], data_y[seg_ind][:,30], color=colors[i], linewidth=1.1)
+#         plt.plot(data_x[seg_ind][:,35], data_y[seg_ind][:,35], color=colors[i], linewidth=1.3)
+#         plt.plot(data_x[seg_ind][:,40], data_y[seg_ind][:,40], color=colors[i], linewidth=1.5, label=art_labs_unique[i])
+
+
+        plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], alpha=0.1, linewidth=1)
+        plt.plot(data_x[seg_ind][:,5], data_y[seg_ind][:,5], color=colors[i], alpha=0.2, linewidth=1)
+        plt.plot(data_x[seg_ind][:,10], data_y[seg_ind][:,10], color=colors[i], alpha=0.3, linewidth=1)
+        plt.plot(data_x[seg_ind][:,15], data_y[seg_ind][:,15], color=colors[i], alpha=0.4, linewidth=1)
+        plt.plot(data_x[seg_ind][:,20], data_y[seg_ind][:,20], color=colors[i], alpha=0.5, linewidth=1)
+        plt.plot(data_x[seg_ind][:,25], data_y[seg_ind][:,25], color=colors[i], alpha=0.6, linewidth=1)
+        plt.plot(data_x[seg_ind][:,30], data_y[seg_ind][:,30], color=colors[i], alpha=0.7, linewidth=1)
+        plt.plot(data_x[seg_ind][:,35], data_y[seg_ind][:,35], color=colors[i], alpha=0.8, linewidth=1)
+        plt.plot(data_x[seg_ind][:,40], data_y[seg_ind][:,40], color=colors[i], alpha=0.9, linewidth=1, label=art_labs_unique[i])
+        
+
+
+        #break
+        #print(data_x[seg_ind][:,0].shape) #[10,]
+        #plt.plot(data_x[seg_ind][1], data_y[seg_ind][1], color=colors[i+15])
+        #break
+
+        #plt.plot(data_x[i][:len_data//2+5], data_y[i][:len_data//2+5], color=colors[i], linewidth=1)
+        #plt.plot(data_x[i][len_data//2:], data_y[i][len_data//2:], color=colors[i], linewidth=3)
+        #plt.annotate(str(i), (data_x[i][0], data_y[i][0]))
+        
+    #plt.xticks(fontsize=50)
+    #plt.yticks(fontsize=50)
+    plt.xticks([])
+    plt.yticks([])
+    #plt.legend(prop={'size': 50})
+    plt.legend()
     plt.title(title,fontdict = {'fontsize' : 50})
     #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
     plt.savefig(title+"_2d_"+".png")
@@ -620,7 +894,6 @@ def vis_gestures_ema(model, **args):
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        
         draw_kinematics_ema(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
     
@@ -636,7 +909,6 @@ def vis_gestures_ieee(model, **args):
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        
         draw_kinematics_ieee(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_2d_ieee(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         
@@ -646,12 +918,30 @@ def vis_gestures_rtMRI(model, **args):
     if args['vq_resynthesis']:
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
-        gestures = model.conv_decoder.weight
+        gestures = model.conv_decoder.weight * 100
+        
+    print(gestures.shape) #torch.Size([340, 1, 40, 41])
+    #
+#     print("one frame.........")    
+    
+#     ema_data = np.load(args['test_ema_path']) #[t, 340]
+#     ema_data = ema_data.reshape(ema_data.shape[0], -1)
+#     print(ema_data.shape)
+#     T = 41
+#     xx = ema_data[:T,:].transpose(-1,-2) #[340]
+#     xx = torch.Tensor(xx)
+#     xx = xx.unsqueeze(1).unsqueeze(1)
+#     print(xx.shape)  #[340, 1, 1, T]
+    
+
+    
+    #draw_new_rtMRI(xx[:,0,0,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='one frame'+str(0), **args)
     
     for i in range(args['num_gestures']):
         gesture_index = i
-        draw_kinematics_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
-        draw_2d_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        #draw_kinematics_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        #draw_2d_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_new_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         
 
     

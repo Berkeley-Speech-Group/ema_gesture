@@ -351,6 +351,10 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
 
             loss_disc_all = loss_disc_s + loss_disc_f
             loss_d_e.append(loss_disc_all.item())
+            
+            torch.nn.utils.clip_grad_norm_(mpd.parameters(), 100)
+            torch.nn.utils.clip_grad_norm_(msd.parameters(), 100)
+            torch.nn.utils.clip_grad_norm_(generator.parameters(), 100)
 
             loss_disc_all.backward()
             optim_d.step()
@@ -361,7 +365,7 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
             # L1 Mel-Spectrogram Loss
             #print("1", mel_real.shape)
             #print("2", wav_g_hat_mel.shape)
-            loss_mel = F.l1_loss(mel_real, wav_g_hat_mel.transpose(-1,-2)) * 100
+            loss_mel = F.l1_loss(mel_real, wav_g_hat_mel.transpose(-1,-2), reduction='mean') * 10
             loss_mel_e.append(loss_mel)
 
             y_df_hat_r, y_df_hat_g, fmap_f_r, fmap_f_g = mpd(wav_real, wav_g_hat)
@@ -371,6 +375,10 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
             loss_gen_f, losses_gen_f = generator_loss(y_df_hat_g)
             loss_gen_s, losses_gen_s = generator_loss(y_ds_hat_g)
             loss_gen_all = loss_gen_s + loss_gen_f + loss_fm_s + loss_fm_f + loss_mel
+            
+            torch.nn.utils.clip_grad_norm_(mpd.parameters(), 100)
+            torch.nn.utils.clip_grad_norm_(msd.parameters(), 100)
+            torch.nn.utils.clip_grad_norm_(generator.parameters(), 100)
 
             loss_gen_all.backward()
             loss_g_e.append(loss_gen_all.item())
@@ -383,7 +391,7 @@ def trainer_ema2speech(generator, mpd, msd, optim_g, optim_d, scheduler_g, sched
         scheduler_g.step()
         scheduler_d.step()
             
-        print("|Epoch: %d Ave Loss_mel is $.4f , Avg Loss_G is %.4f, Avg Loss_D is %.4f" %(e, sum(loss_mel_e)/len(loss_mel_e), sum(loss_g_e)/len(loss_g_e), sum(loss_d_e)/len(loss_d_e)))
+        print("|Epoch: %d Ave Loss_mel is %.4f , Avg Loss_G is %.4f, Avg Loss_D is %.4f" %(e, sum(loss_mel_e)/len(loss_mel_e), sum(loss_g_e)/len(loss_g_e), sum(loss_d_e)/len(loss_d_e)))
         
         torch.save(generator.state_dict(), os.path.join(args['save_path'], "generator_best"+".pth"))
         if (e + 1) % 10 == 0:
