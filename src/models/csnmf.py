@@ -173,8 +173,8 @@ class AE_CSNMF(nn.Module):
             kmeans_centers = kmeans_centers.permute(1,0,2) #[24, 40,41]
         elif args['dataset'] == 'rtMRI':
             #self.gesture_weight = nn.Parameter(torch.randn(self.num_pellets, self.num_gestures, self.win_size)) #[340, 40, 41]
-            kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_rtMRI.npy')) #[40, 340*41=13940]
-            kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 340, 41]
+            kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
+            kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, self.win_size)#[40, 340, 41]
             kmeans_centers = kmeans_centers.permute(1,0,2) #[340, 40,41]
             #kmeans_centers = torch.randn(24,40,41)
             #self.conv_decoder_weight = nn.Parameter(kmeans_centers)

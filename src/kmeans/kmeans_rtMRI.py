@@ -7,8 +7,9 @@ import random
 from kmeans_pytorch import kmeans
 from fast_pytorch_kmeans import KMeans as kmeans_fast
 from tqdm import tqdm
+import argparse
 
-def kmeans_ema():
+def kmeans_ema(win_size=None, num_gestures=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     ema_paths = []
     ema_npy_paths = []
@@ -42,13 +43,13 @@ def kmeans_ema():
     ###########inp is [24, T_huge]
     ###########it should be [24, T_huge*41]
     ###########So we pad 20 on both sides
-    ema_data_huge_pad = F.pad(ema_data_huge, pad=(20,20,0,0), mode='constant', value=0) #[340, T_huge]
+    ema_data_huge_pad = F.pad(ema_data_huge, pad=((win_size-1)//2,(win_size)//2,0,0), mode='constant', value=0) #[340, T_huge]
     ####################################
     
 
     super_ema_data_huge_list = []
     for t in tqdm(range(ema_data_huge.shape[1])):
-        win_ema = ema_data_huge_pad[:,t:t+41] #[340, 41]
+        win_ema = ema_data_huge_pad[:,t:t+win_size] #[340, 41]
         win_ema = win_ema.reshape(-1) #[340*41=13940]
         super_ema_data_huge_list.append(win_ema)
         if t == 100000:
@@ -70,17 +71,23 @@ def kmeans_ema():
     #     np.save("data/kmeans_pretrain/kmeans_centers_rtMRI.npy", cluster_centers.detach().numpy())
     #     np.save("data/kmeans_pretrain/kmeans_ids_rtMRI.npy", cluster_ids.detach().numpy())
     
-    kmeans_model = kmeans_fast(n_clusters=40, mode='euclidean', verbose=1)
+    kmeans_model = kmeans_fast(n_clusters=num_gestures, mode='euclidean', verbose=1)
     x = super_ema_data_huge
     cluster_ids = kmeans_model.fit_predict(x)    
     cluster_centers = kmeans_model.centroids
     print("kmeans finished!!")
     print("shape of centers of kmeans is", cluster_centers.shape)
     print("shape of ids of kmeans is", cluster_ids.shape)
-    np.save("data/kmeans_pretrain/kmeans_centers_rtMRI.npy", cluster_centers.detach().cpu().numpy())
-    np.save("data/kmeans_pretrain/kmeans_ids_rtMRI.npy", cluster_ids.detach().cpu().numpy())    
+    np.save(f"data/kmeans_pretrain/kmeans_centers_rtMRI_win_{win_size}_num_gestures_{num_gestures}.npy", cluster_centers.detach().cpu().numpy())
+    np.save(f"data/kmeans_pretrain/kmeans_ids_rtMRI_win_{win_size}_num_gestures_{num_gestures}.npy", cluster_ids.detach().cpu().numpy())    
     
 
 if __name__ == '__main__':
-    kmeans_ema()
+    
+    parser = argparse.ArgumentParser(description = "main python code")
+    parser.add_argument('--win_size', type=int, default=11, help='')
+    parser.add_argument('--num_gestures', type=int, default=11, help='')
+    args = parser.parse_args()
+
+    kmeans_ema(win_size=args.win_size, num_gestures=args.num_gestures)
 

@@ -919,28 +919,11 @@ def vis_gestures_rtMRI(model, **args):
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
         gestures = model.conv_decoder.weight * 100
-        
-    print(gestures.shape) #torch.Size([340, 1, 40, 41])
-    #
-#     print("one frame.........")    
     
-#     ema_data = np.load(args['test_ema_path']) #[t, 340]
-#     ema_data = ema_data.reshape(ema_data.shape[0], -1)
-#     print(ema_data.shape)
-#     T = 41
-#     xx = ema_data[:T,:].transpose(-1,-2) #[340]
-#     xx = torch.Tensor(xx)
-#     xx = xx.unsqueeze(1).unsqueeze(1)
-#     print(xx.shape)  #[340, 1, 1, T]
-    
-
-    
-    #draw_new_rtMRI(xx[:,0,0,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='one frame'+str(0), **args)
     
     for i in range(args['num_gestures']):
         gesture_index = i
         #draw_kinematics_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
-        #draw_2d_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_new_rtMRI(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         
 
