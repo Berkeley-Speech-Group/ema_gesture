@@ -85,6 +85,7 @@ parser.add_argument('--vq', action='store_true', help='')
 parser.add_argument('--vq_only', action='store_true', help='to test the clustering performance')
 parser.add_argument('--eval_pr', action='store_true', help='')
 parser.add_argument('--pr_voicing', action='store_true', help='')
+parser.add_argument('--multi_scale', action='store_true', help='')
 parser.add_argument('--config', type=str, default='', help='')
 
 args = parser.parse_args()
@@ -215,8 +216,8 @@ if __name__ == "__main__":
         if args.pr_mel or args.pr_mfcc or args.pr_joint or args.pr_stft:
             optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
         else:
-            optimizer = torch.optim.SGD(model.parameters(), lr=0.001, weight_decay=5e-5, momentum=0.9)
-            #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+            #optimizer = torch.optim.SGD(model.parameters(), lr=0.001, weight_decay=5e-5, momentum=0.9)
+            optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
         lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.9)
         #lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.lr_decay_rate, patience=10, threshold=0.0001)
 

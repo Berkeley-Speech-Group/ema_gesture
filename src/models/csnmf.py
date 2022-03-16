@@ -125,6 +125,7 @@ class AE_CSNMF(nn.Module):
         self.t = args['segment_len']
         self.num_pellets = args['num_pellets']
         self.num_gestures = args['num_gestures']
+        self.multi_scale = args['multi_scale']
         self.conv_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=41,padding=20) #larger is better
         self.conv_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
         self.conv_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
@@ -135,7 +136,7 @@ class AE_CSNMF(nn.Module):
         self.conv_encoder8 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
         self.conv_encoder9 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
         self.conv_encoder10 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
-        self.LSTM = nn.LSTM(input_size=self.num_pellets, hidden_size=self.num_pellets//2, num_layers=2, bidirectional=True, batch_first=True)
+        self.LSTM = nn.LSTM(input_size=512, hidden_size=512//2, num_layers=2, bidirectional=True, batch_first=True)
         self.bn1 = nn.BatchNorm1d(self.num_pellets)
         self.bn2 = nn.BatchNorm1d(self.num_pellets)
         self.bn3 = nn.BatchNorm1d(self.num_pellets)
@@ -146,10 +147,29 @@ class AE_CSNMF(nn.Module):
         self.bn8 = nn.BatchNorm1d(self.num_pellets)
         self.bn9 = nn.BatchNorm1d(self.num_pellets)
         self.bn10 = nn.BatchNorm1d(self.num_pellets)
+        self.dp1 = nn.Dropout(0.1)
+        self.dp2 = nn.Dropout(0.1)
+        self.dp3 = nn.Dropout(0.1)
+        self.dp4 = nn.Dropout(0.1)
+        self.dp5 = nn.Dropout(0.1)
         self.sparse_c_base = args['sparse_c_base']
         self.sparse_t_base = args['sparse_t_base']
         self.pr_joint = args['pr_joint']
         self.fixed_length = args['fixed_length']
+        
+        self.fc1 = nn.Linear(self.num_pellets, 1024)
+        self.bn1_fc = nn.BatchNorm1d(1024)
+        self.fc2 = nn.Linear(1024, 512)
+        self.bn2_fc = nn.BatchNorm1d(512)
+        self.fc3 = nn.Linear(512, 512)
+        self.bn3_fc = nn.BatchNorm1d(512)
+        self.fc4 = nn.Linear(512, 512)
+        self.bn4_fc = nn.BatchNorm1d(512)
+        self.fc5 = nn.Linear(512, 512)
+        self.bn5_fc = nn.BatchNorm1d(512)
+        self.fc6 = nn.Linear(512, self.num_gestures)
+        self.fc6_2 = nn.Linear(512, self.num_gestures)
+        self.bn6_fc = nn.BatchNorm1d(self.num_gestures)
 
         ######Apply weights of k-means to gestures
         if args['dataset'] == 'ema':
@@ -173,51 +193,85 @@ class AE_CSNMF(nn.Module):
             kmeans_centers = kmeans_centers.permute(1,0,2) #[24, 40,41]
         elif args['dataset'] == 'rtMRI':
             #self.gesture_weight = nn.Parameter(torch.randn(self.num_pellets, self.num_gestures, self.win_size)) #[340, 40, 41]
-            kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
+            #kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
+            kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_modulation_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
             kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, self.win_size)#[40, 340, 41]
             kmeans_centers = kmeans_centers.permute(1,0,2) #[340, 40,41]
             #kmeans_centers = torch.randn(24,40,41)
             #self.conv_decoder_weight = nn.Parameter(kmeans_centers)
             #self.gesture_weight = self.conv_decoder_weight
             
-        self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
+            self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
+            self.conv_decoder.weight.data = kmeans_centers.unsqueeze(1)
+            #self.conv_decoder.weight.data= self.conv_decoder.weight.data / 100
+        
+        if self.multi_scale:
+            self.conv_decoder2 = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures, 41),padding=0)
+            #kmeans_centers_2 = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_win_41_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
+            
+            kmeans_centers_2 = kmeans_centers_2.reshape(self.num_gestures, self.num_pellets, 41)#[40, 340, 41]
+            kmeans_centers_2 = kmeans_centers_2.permute(1,0,2) #[340, 40,41]
+            self.conv_decoder2.weight.data = kmeans_centers_2.unsqueeze(1)
+            self.conv_decoder2.weight.data= self.conv_decoder2.weight.data / 100
 
         #torch.nn.init.normal_(self.conv_decoder.weight)
         
-        self.conv_decoder.weight.data = kmeans_centers.unsqueeze(1)
-        self.conv_decoder.weight.data= self.conv_decoder.weight.data / 100
-
+#         for param in self.conv_decoder.parameters():
+#             param.requires_grad = False
+        
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
 
     def forward(self, x, ema_inp_lens):
         #shape of x is [B,t,A]
         #print(x)
-        #print("max", torch.max(x))
-        #print("min", torch.min(x))
+
+        #print(self.conv_decoder.weight.data)
         
         time_steps = x.shape[1]
+        
+        H = self.fc1(x)
+        H = self.bn1_fc(H.transpose(-1, -2)).transpose(-1, -2)
+        H = self.fc2(H)
+        H_final = self.bn2_fc(H.transpose(-1, -2)).transpose(-1, -2)
+#         H = self.fc3(H)
+#         H = self.bn3_fc(H.transpose(-1, -2)).transpose(-1, -2)
+#         H = self.fc4(H)
+#         H = self.bn4_fc(H.transpose(-1, -2)).transpose(-1, -2)
+#         H = self.fc5(H)
+#         H = self.bn5_fc(H.transpose(-1, -2)).transpose(-1, -2)
+        
+        H = self.fc6(H_final)
+        H = H.transpose(-1, -2)
+        H = F.relu(H)
+        
+        if self.multi_scale:
+            H2 = self.fc6_2(H_final)
+            H2 = H2.transpose(-1, -2)
+            H2 = F.relu(H2)
+        
+
         x = x.transpose(-1, -2) #[B, A, t]
-        H = self.conv_encoder1(x) #[B, C, t]
-        H = self.bn1(H)
-        H = self.conv_encoder2(H)#[B, C, t]
-        H = self.bn2(H)
-        H = self.conv_encoder3(H) #[B, C, t]
-        H = self.bn3(H)
-        H = F.relu(self.conv_encoder4(H)) #[B, C, t]
+        
+#         H = self.conv_encoder1(x) #[B, C, t]
+#         H = self.conv_encoder2(H)#[B, C, t]
+#         H = self.bn2(H)
+#         H = self.conv_encoder3(H) #[B, C, t]
+#         H = self.bn3(H)
+#         H = self.conv_encoder4(H) #[B, C, t]
+#         H = self.bn4(H)
+#         H = self.conv_encoder5(H) #[B, C, t]
+#         H = self.bn5(H)
+#         H = self.conv_encoder6(H) #[B, C, t]
+#         H = self.bn6(H)
+#         H = self.conv_encoder7(H) #[B, C, t]
+#         H = self.bn7(H)
+#         H = self.conv_encoder8(H) #[B, C, t]
+#         H = self.conv_encoder4(H) #[B, C, t]
+#         H = self.conv_encoder10(H) #[B, C, t]
         
         #print("11", torch.max(self.conv_decoder.weight))
-        
-        
-#         H, _ = self.LSTM(H.transpose(-1,-2))
-#         #print("hhjhj", H.shape)
-#         H = H.transpose(-1,-2)
-        #H = F.relu(self.conv_encoder5(H)) #[B, C, t]
-        #H = F.relu(self.conv_encoder6(H)) #[B, C, t]
-        #H = F.relu(self.conv_encoder7(H)) #[B, C, t] . #Three encoder layer is the best!
-        #H = F.relu(self.conv_encoder8(H)) #[B, C, t]
-        #H = F.relu(self.conv_encoder9(H)) #[B, C, t]
-        H = F.relu(self.conv_encoder10(H)) #[B, C, t] . #Three encoder layer is the best!
+    
         #print("max", torch.max(H))
         #print("min", torch.min(H))
         if self.pr_joint:
@@ -237,6 +291,13 @@ class AE_CSNMF(nn.Module):
         H = H[:,:,:,:time_steps] #The segment length should be the same as input sequence during testing
         H = F.pad(H, pad=(0,self.win_size-1,0,0,0,0,0,0), mode='constant', value=0)
         inp_hat = self.conv_decoder(H).squeeze(dim=-2) #[B, A, t]
+        
+        if self.multi_scale:
+            H2 = H2.unsqueeze(1)
+            H2 = H2[:,:,:,:time_steps] #The segment length should be the same as input sequence during testing
+            H2 = F.pad(H2, pad=(0,41-1,0,0,0,0,0,0), mode='constant', value=0)
+            inp_hat2 = self.conv_decoder2(H2).squeeze(dim=-2) #[B, A, t]
+            inp_hat = inp_hat + inp_hat2
         
         #inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
         

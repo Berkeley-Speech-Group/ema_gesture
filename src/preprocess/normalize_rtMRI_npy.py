@@ -10,8 +10,8 @@ all_ema = []
 for spk_id in tqdm(os.listdir(path)):
     if not spk_id.startswith("F") and not spk_id.startswith("M"):
         continue
-    if not "F_18" in spk_id:
-        continue
+#     if not "F_18" in spk_id:
+#         continue
     spk_id_path = os.path.join(path, spk_id)
     track_path = os.path.join(spk_id_path, 'tracks')
     for npy_file in tqdm(os.listdir(track_path)):
@@ -22,7 +22,7 @@ for spk_id in tqdm(os.listdir(path)):
         if not os.path.exists(npy_path):
             continue
         ema_data = np.load(npy_path) #[T, 340]
-        print(ema_data.shape)
+        #print(ema_data.shape)
         if ema_data.shape[-1] != 340:
             continue
         all_ema.append(ema_data)

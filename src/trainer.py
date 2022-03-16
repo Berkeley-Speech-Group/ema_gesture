@@ -198,6 +198,7 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
 
     writer = SummaryWriter()
     count = 0
+    rec_loss_best = 10000
     for e in range(args['num_epochs']):
         rec_loss_e = []
         sparsity_c_e = []
@@ -220,6 +221,8 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
             else:
                 inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq = model(ema_batch, None)
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
+
+                
             loss = args['rec_factor']*rec_loss
 
             if args['pr_joint']:
@@ -245,7 +248,7 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
             #loss = 0 * loss_vq
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1000)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
             #print(model.vq_model._embedding.weight)
             optimizer.step()
             if args['pr_joint']:
@@ -420,6 +423,7 @@ def trainer_resynthesis_ieee(model, optimizer, lr_scheduler, ema_dataloader_trai
 
     writer = SummaryWriter()
     count = 0
+    rec_loss_best = 10000
     for e in range(args['num_epochs']):
         rec_loss_e = []
         sparsity_c_e = []
@@ -438,6 +442,9 @@ def trainer_resynthesis_ieee(model, optimizer, lr_scheduler, ema_dataloader_trai
             
             inp, inp_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq = model(ema_batch, None)
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
+            if rec_loss < rec_loss_best:
+                rec_loss_best = rec_loss
+                torch.save(model.state_dict(), os.path.join(args['save_path'], "best_rec"+".pth"))
             loss = args['rec_factor']*rec_loss
 
 
@@ -461,7 +468,7 @@ def trainer_resynthesis_ieee(model, optimizer, lr_scheduler, ema_dataloader_trai
             #loss = 0 * loss_vq
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1000)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 50)
             #print(model.vq_model._embedding.weight)
             optimizer.step()
 

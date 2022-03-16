@@ -244,6 +244,7 @@ def get_sparsity(H):
 def vis_H(model, **args):
     #ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
+    ema_data = ema_data[1462:1527,:]
     ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
     B = ema_data.shape[0]
     T = ema_data.shape[1]
@@ -256,16 +257,16 @@ def vis_H(model, **args):
 
     latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
     
-    latent_H = latent_H[:,:latent_H.shape[1]//6]
+    #latent_H = latent_H[:,:latent_H.shape[1]//6]
     
     plt.figure(figsize=(20,15)) 
     ax = plt.gca()
     im = ax.imshow(latent_H, cmap='Blues', interpolation='nearest', aspect=2)
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="2%", pad=-4.7)
-    cbar = plt.colorbar(im, cax=cax)
-    #cbar.ax.tick_params(labelsize=40)
-    cbar.set_ticks([])
+#     cax = divider.append_axes("right", size="2%", pad=-4.7)
+#     cbar = plt.colorbar(im, cax=cax)
+#     #cbar.ax.tick_params(labelsize=40)
+#     cbar.set_ticks([])
     ax.set_xticks([])
     ax.set_yticks([])
     #plt.title(text_trans, fontsize=30)
@@ -454,6 +455,9 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     ema_data = ema_data.squeeze(0)
     if mode == 'kinematics':
         ema_data_hat = ema_data_hat.squeeze(0)
+        
+    ema_data = ema_data[:1000]
+    ema_data_hat = ema_data_hat[:1000]
     
     x = np.arange(ema_data.shape[0])
 
@@ -463,8 +467,8 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     colors = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
                  for i in range(number_of_colors)]
     
-    outer = gridspec.GridSpec(20, 1, wspace=0.2, hspace=0.2)
-    for i in range(20):
+    outer = gridspec.GridSpec(8, 1, wspace=0.2, hspace=0.2)
+    for i in range(8):
         inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
@@ -631,12 +635,6 @@ def draw_new_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     segment_0 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment0.npy")
     segment_1 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment1.npy")
     segment_2 = np.load("data/rtMRI/F_18_Sacramento_sub047/segment2.npy")
-    # print("segment0", segment_0)
-    # print("segment1", segment_1)
-    # print("segment2", segment_2)
-    # print("segment0_shape", segment_0.shape) #[70,1]
-    # print("segment1_shape", segment_1.shape) #[40,1]
-    # print("segment2_shape", segment_2.shape) #[60,1]
     
     segment_all = []
     prev_segment_label = None
@@ -696,7 +694,6 @@ def draw_new_rtMRI(ema_data, ema_data_hat, mode, title, **args):
         art_labs.append("upper lip")
     art_labs_unique.append("upper lip")
     
-        
     
     #print("This is draw_2d rtMRI..........")
     
@@ -745,75 +742,30 @@ def draw_new_rtMRI(ema_data, ema_data_hat, mode, title, **args):
 
     for i in range(15):
         seg_ind = np.array(seg_indices[i])
+        
+#         delta = (args['win_size']-1)//8
 
-        
-#         p1 = data_x[seg_ind][:,0].argsort()
-#         x1 = data_x[seg_ind][:,0][p1]
-#         y1 = data_y[seg_ind][:,0][p1]
-        
-#         p2 = data_x[seg_ind][:,5].argsort()
-#         x2 = data_x[seg_ind][:,5][p2]
-#         y2 = data_y[seg_ind][:,5][p2]
-        
-#         p3 = data_x[seg_ind][:,10].argsort()
-#         x3 = data_x[seg_ind][:,10][p3]
-#         y3 = data_y[seg_ind][:,10][p3]
-        
-#         p4 = data_x[seg_ind][:,15].argsort()
-#         x4 = data_x[seg_ind][:,15][p4]
-#         y4 = data_y[seg_ind][:,15][p4]
-        
-#         p5 = data_x[seg_ind][:,20].argsort()
-#         x5 = data_x[seg_ind][:,20][p5]
-#         y5 = data_y[seg_ind][:,20][p5]
+#         plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], alpha=0.1, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta], data_y[seg_ind][:,delta], color=colors[i], alpha=0.2, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta*2], data_y[seg_ind][:,delta*2], color=colors[i], alpha=0.3, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta*3], data_y[seg_ind][:,delta*3], color=colors[i], alpha=0.4, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta*4], data_y[seg_ind][:,delta*4], color=colors[i], alpha=0.5, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta*5], data_y[seg_ind][:,delta*5], color=colors[i], alpha=0.6, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta*6], data_y[seg_ind][:,delta*6], color=colors[i], alpha=0.7, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta*7], data_y[seg_ind][:,delta*7], color=colors[i], alpha=0.8, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,delta*8], data_y[seg_ind][:,delta*8], color=colors[i], alpha=0.9, linewidth=1, label=art_labs_unique[i])
 
-        
-#         xnew_1 = np.linspace(x1.min(), x1.max(), 300) 
-#         spl = make_interp_spline(x1, y1, k=1)  # type: BSpline
-#         power_smooth_1 = spl(xnew_1)
-        
-#         xnew_2 = np.linspace(x2.min(), x2.max(), 300) 
-#         spl = make_interp_spline(x2, y2, k=1)  # type: BSpline
-#         power_smooth_2 = spl(xnew_2)
-        
-#         xnew_3 = np.linspace(x3.min(), x3.max(), 300) 
-#         spl = make_interp_spline(x3, y3, k=1)  # type: BSpline
-#         power_smooth_3 = spl(xnew_3)
-        
-#         xnew_4 = np.linspace(x4.min(), x4.max(), 300) 
-#         spl = make_interp_spline(x4, y4, k=1)  # type: BSpline
-#         power_smooth_4 = spl(xnew_4)
-        
-#         xnew_5 = np.linspace(x5.min(), x5.max(), 300) 
-#         spl = make_interp_spline(x5, y5, k=1)  # type: BSpline
-#         power_smooth_5 = spl(xnew_5)        plt.plot(xnew_1, power_smooth_1, color=colors[i], linewidth=0.2)
-
-#         plt.plot(xnew_2, power_smooth_2, color=colors[i], linewidth=0.5)
-#         plt.plot(xnew_3, power_smooth_3, color=colors[i], linewidth=0.9)
-#         plt.plot(xnew_4, power_smooth_4, color=colors[i], linewidth=1.4)
-#         plt.plot(xnew_5, power_smooth_5, color=colors[i], linewidth=2, label=art_labs_unique[i])
-        
-        
-#         plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], linewidth=0.05)
-#         plt.plot(data_x[seg_ind][:,5], data_y[seg_ind][:,5], color=colors[i], linewidth=0.1)
-#         plt.plot(data_x[seg_ind][:,10], data_y[seg_ind][:,10], color=colors[i], linewidth=0.3)
-#         plt.plot(data_x[seg_ind][:,15], data_y[seg_ind][:,15], color=colors[i], linewidth=0.5)
-#         plt.plot(data_x[seg_ind][:,20], data_y[seg_ind][:,20], color=colors[i], linewidth=0.7)
-#         plt.plot(data_x[seg_ind][:,25], data_y[seg_ind][:,25], color=colors[i], linewidth=0.9)
-#         plt.plot(data_x[seg_ind][:,30], data_y[seg_ind][:,30], color=colors[i], linewidth=1.1)
-#         plt.plot(data_x[seg_ind][:,35], data_y[seg_ind][:,35], color=colors[i], linewidth=1.3)
-#         plt.plot(data_x[seg_ind][:,40], data_y[seg_ind][:,40], color=colors[i], linewidth=1.5, label=art_labs_unique[i])
-
+        delta = (args['win_size']-1)
 
         plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], alpha=0.1, linewidth=1)
-        plt.plot(data_x[seg_ind][:,5], data_y[seg_ind][:,5], color=colors[i], alpha=0.2, linewidth=1)
-        plt.plot(data_x[seg_ind][:,10], data_y[seg_ind][:,10], color=colors[i], alpha=0.3, linewidth=1)
-        plt.plot(data_x[seg_ind][:,15], data_y[seg_ind][:,15], color=colors[i], alpha=0.4, linewidth=1)
-        plt.plot(data_x[seg_ind][:,20], data_y[seg_ind][:,20], color=colors[i], alpha=0.5, linewidth=1)
-        plt.plot(data_x[seg_ind][:,25], data_y[seg_ind][:,25], color=colors[i], alpha=0.6, linewidth=1)
-        plt.plot(data_x[seg_ind][:,30], data_y[seg_ind][:,30], color=colors[i], alpha=0.7, linewidth=1)
-        plt.plot(data_x[seg_ind][:,35], data_y[seg_ind][:,35], color=colors[i], alpha=0.8, linewidth=1)
-        plt.plot(data_x[seg_ind][:,40], data_y[seg_ind][:,40], color=colors[i], alpha=0.9, linewidth=1, label=art_labs_unique[i])
+        plt.plot(data_x[seg_ind][:,1], data_y[seg_ind][:,1], color=colors[i], alpha=0.2, linewidth=1)
+        plt.plot(data_x[seg_ind][:,2], data_y[seg_ind][:,2], color=colors[i], alpha=0.3, linewidth=1)
+        plt.plot(data_x[seg_ind][:,3], data_y[seg_ind][:,3], color=colors[i], alpha=0.4, linewidth=1)
+        plt.plot(data_x[seg_ind][:,4], data_y[seg_ind][:,4], color=colors[i], alpha=0.5, linewidth=1)
+        plt.plot(data_x[seg_ind][:,5], data_y[seg_ind][:,5], color=colors[i], alpha=0.6, linewidth=1)
+        plt.plot(data_x[seg_ind][:,6], data_y[seg_ind][:,6], color=colors[i], alpha=0.7, linewidth=1)
+        plt.plot(data_x[seg_ind][:,7], data_y[seg_ind][:,7], color=colors[i], alpha=0.8, linewidth=1)
+        plt.plot(data_x[seg_ind][:,8], data_y[seg_ind][:,8], color=colors[i], alpha=0.9, linewidth=1, label=art_labs_unique[i])
         
 
 
@@ -906,7 +858,6 @@ def vis_gestures_ieee(model, **args):
         #gestures = model.gesture_weight.unsqueeze(1)
         gestures = 60 * model.conv_decoder.weight
     
-    #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
         draw_kinematics_ieee(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
@@ -914,11 +865,12 @@ def vis_gestures_ieee(model, **args):
         
 
 def vis_gestures_rtMRI(model, **args):
-    #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
     if args['vq_resynthesis']:
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
-        gestures = model.conv_decoder.weight * 100
+        gestures = model.conv_decoder.weight
+        
+    #shape of gestures: [num_pellets, 1, num_gestures, win_size]
     
     
     for i in range(args['num_gestures']):
