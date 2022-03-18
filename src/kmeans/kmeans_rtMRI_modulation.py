@@ -10,7 +10,7 @@ from tqdm import tqdm
 import argparse
 import matplotlib.pyplot as plt
 
-def kmeans_ema(win_size=None, win_size_con=None, num_gestures=None):
+def kmeans_ema(win_size=None,  num_gestures=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
     ema_paths = []
@@ -42,14 +42,6 @@ def kmeans_ema(win_size=None, win_size_con=None, num_gestures=None):
     ema_data_huge_delta = ema_data_huge[:,1:] - ema_data_huge[:,:T_huge-1] #[340, T_huge-1]
     ema_data_huge_delta_energy = (ema_data_huge_delta ** 2).sum(dim=0) #[T_huge-1]
     ema_data_huge_delta_energy_grad = np.gradient(ema_data_huge_delta_energy)
-    x_test = np.arange(T_huge-1)
-    
-#     plt.figure(figsize=(20, 6))
-#     plt.plot(x_test[:300], ema_data_huge_delta_energy[:300])
-#     #plt.plot(x_test[:300], ema_data_huge_delta_energy_grad[:300])
-#     plt.savefig("rr.png")
-#     exit()
-    
     
     ########################################################
     ####################Then we are going to perform kmeans
@@ -57,47 +49,100 @@ def kmeans_ema(win_size=None, win_size_con=None, num_gestures=None):
     ###########inp is [24, T_huge]
     ###########it should be [24, T_huge*41]
     ###########So we pad 20 on both sides
-    ema_data_huge_pad = F.pad(ema_data_huge, pad=((win_size-1)//2,(win_size)//2,0,0), mode='constant', value=0) #[340, T_huge+win_size*2]
-    ema_data_energy_huge_pad = F.pad(ema_data_huge_delta_energy, pad=((win_size-1)//2,(win_size)//2), mode='constant', value=0) #[T_huge+win_size*2]
+    #ema_data_huge_pad = F.pad(ema_data_huge, pad=((win_size-1)//2,(win_size)//2,0,0), mode='constant', value=0) #[340, T_huge+win_size*2]
+    #ema_data_energy_huge_pad = F.pad(ema_data_huge_delta_energy, pad=((win_size-1)//2,(win_size)//2), mode='constant', value=0) #[T_huge+win_size*2]
     ####################################
     
-    super_ema_data_huge_list_con = []
-    t = 0
-    while t < ema_data_huge.shape[1]:
-        win_energy = ema_data_energy_huge_pad[t:t+win_size] 
-        max_energy_win = torch.max(win_energy)
-        max_energy_index_win = torch.argmax(win_energy)
-        
-        if max_energy_win > 15:
-            win_ema_con = ema_data_huge_pad[:,max_energy_index_win-(win_size_con-1)//2:max_energy_index_win+(win_size_con-1)//2+1]
-            if win_ema_con.shape[1] != win_size_con:
-                t += win_size
-                continue
-            win_ema_con = win_ema_con.reshape(-1) #[340*win_size_con=13940]
-            super_ema_data_huge_list_con.append(win_ema_con)
-        t += win_size
-        
-#     t = 0
-#     while t < ema_data_huge.shape[1]:
-#         win_energy = ema_data_energy_huge_pad[t:t+win_size] 
-#         max_energy_win = torch.max(win_energy)
-#         max_energy_index_win = torch.argmax(win_energy)
-        
-#         if max_energy_win  < 3:
-#             win_ema_con = ema_data_huge_pad[:,t:t+win_size]
-#             if win_ema_con.shape[1] != win_size_con:
-#                 t += 1
-#                 continue
-#             win_ema_con = win_ema_con.reshape(-1) #[340*win_size_con=13940]
-#             super_ema_data_huge_list_con.append(win_ema_con)
-#             t += win_size
-#         else:
-#             t += 1
-
-    super_ema_data_huge_con = torch.stack(super_ema_data_huge_list_con, dim=0).to(device) #[452849, 13940]
-    print(super_ema_data_huge_con.shape)
     
+    ######################################################## zero array ##########################################################
+    test_arr = ema_data_huge_delta_energy.clone()
+    for i in range(len(test_arr)):
+        if test_arr[i] < 10:
+            test_arr[i] = 0
+#     x = np.arange(len(test_arr))
+#     plt.figure(figsize=(20.1, 6))
+#     plt.plot(x[:500], test_arr[:500])
+#     plt.savefig("test.png")
+#     exit()
+    
+            
+    ######################################################## Find Peak ##########################################################
+    test_arr2 = test_arr.clone()
+    peak_indices = []
+    peak_indices_set = set()
+    h_win_size = (win_size - 1) // 2
+
+
+    ###############################################    Locate Peak Indices    ###########################################
+    for i in range(len(test_arr2)):
+        if i > 1 and i < len(test_arr2) - 1:
+            if test_arr2[i] > test_arr2[i + 1] and test_arr2[i] > test_arr2[i - 1]:
+                peak_indices.append(i)
+                peak_indices_set.add(i)
+
+    peak_indices_sparse = []
+    peak_indices_sparse_set = set()
+
+    for index in peak_indices:
+        flag = False
+        if index + h_win_size <= len(test_arr2) -1 and index - h_win_size >= 0:
+            for j in range(index - h_win_size, index + h_win_size + 1):
+                if j == index:
+                    continue
+                if j in peak_indices_set:
+                    flag = True
+                    break
+            if not flag:
+                peak_indices_sparse.append(index)
+                peak_indices_sparse_set.add(index)
+                
+#     y = test_arr2.clone()
+#     x = np.arange(len(y))
+#     for i in range(len(y)):
+#         if i not in peak_indices_sparse_set:
+#             y[i] = 0
+
+#     plt.figure(figsize=(20.1, 6))
+#     plt.plot(x[:5000], y[:5000])
+#     plt.xticks()
+#     plt.yticks()
+#     #plt.xlim(0,200)
+#     plt.savefig("test1.png")
+#     exit()
+                
+    
+    ###############################################    collect ema kinematics    ###########################################
+    super_ema_data_huge_list_con = []
+    
+    ###############. Peak Part. #################
+    for i in range(len(peak_indices_sparse)):
+        index = peak_indices_sparse[i]
+        if ema_data_huge[:, i - h_win_size : i + h_win_size + 1].shape[1] != win_size:
+            continue
+        super_ema_data_huge_list_con.append(ema_data_huge[:, i - h_win_size : i + h_win_size + 1])
+        
+        
+    ###############. Valley Part. #################
+    for i in range(len(peak_indices_sparse)):
+        index = peak_indices_sparse[i]
+        if i + 1 <= len(peak_indices_sparse) - 1:
+            next_index = peak_indices_sparse[i + 1]
+        start_indices = torch.linspace(index, next_index-win_size, 10)
+        for start_index in start_indices:
+            start_index = int(start_index)
+            if ema_data_huge[:, start_index: start_index + win_size].shape[1] != win_size:
+                continue
+            super_ema_data_huge_list_con.append(ema_data_huge[:, start_index: start_index + win_size])
+            
+        
+    super_ema_data_huge_con = torch.stack(super_ema_data_huge_list_con, dim=0) #[N, 340, 15]
+    print(super_ema_data_huge_con.shape)
+    super_ema_data_huge_con = super_ema_data_huge_con.reshape(super_ema_data_huge_con.shape[0], -1).to(device) #[N, 340*15]
+
     print("shape of original data is:", super_ema_data_huge_con.shape) #[452849, 13940]
+    
+    
+    #################################################################### kmeans ##############################################################################
     
     kmeans_model = kmeans_fast(n_clusters=num_gestures, max_iter=1000, mode='euclidean', verbose=1)
     x = super_ema_data_huge_con
@@ -113,10 +158,9 @@ def kmeans_ema(win_size=None, win_size_con=None, num_gestures=None):
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description = "main python code")
-    parser.add_argument('--win_size', type=int, default=9, help='')
-    parser.add_argument('--win_size_con', type=int, default=9, help='')
+    parser.add_argument('--win_size', type=int, default=15, help='')
     parser.add_argument('--num_gestures', type=int, default=20, help='')
     args = parser.parse_args()
 
-    kmeans_ema(win_size=args.win_size, win_size_con=args.win_size_con, num_gestures=args.num_gestures)
+    kmeans_ema(win_size=args.win_size, num_gestures=args.num_gestures)
 

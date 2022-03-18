@@ -116,6 +116,9 @@ def butter_highpass(cutoff, fs, order=5):
 
 def pySTFT(x, fft_length=1024, hop_length=256):
     
+    hop_length = 241
+    
+    
     #delta = fft_length - hop_length
     #if (len(x) - delta) % hop_length != 0:
     #    pad_width = (len(x) // hop_length + 1) * hop_length + delta - len(x)
@@ -158,7 +161,6 @@ def wav2mfcc(wav):
     mfcc = torchaudio.transforms.MFCC(n_mfcc=39)
     mfcc_data = mfcc(wav).squeeze(0).transpose(0,1)
     return mfcc_data
-
 
 def draw_mel2(wav=None, mode=None, title=None):
     y, sr = librosa.load(wav) #y:[21969, ]
