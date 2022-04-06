@@ -111,6 +111,7 @@ class EMA_Dataset:
                     wav_data = torch.zeros((1, self.segment_len*80))
                 
                 mel_data = mel_spectrogram(y=wav_data, n_fft=1025, num_mels=80, sampling_rate=16000, hop_size=256, win_size=1024, fmin=0, fmax=8000, center=False).squeeze(0).transpose(-1,-2) #[T_mel, 80]
+                
         return ema_data.transpose(-1, -2), wav_data.squeeze(0), mel_data
     
     

@@ -194,7 +194,8 @@ class AE_CSNMF(nn.Module):
         elif args['dataset'] == 'rtMRI':
             #self.gesture_weight = nn.Parameter(torch.randn(self.num_pellets, self.num_gestures, self.win_size)) #[340, 40, 41]
             #kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
-            kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_modulation_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
+            #kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_modulation_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
+            kmeans_centers = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_plus_rtMRI_modulation_win_{self.win_size}_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
             kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, self.win_size)#[40, 340, 41]
             kmeans_centers = kmeans_centers.permute(1,0,2) #[340, 40,41]
             #kmeans_centers = torch.randn(24,40,41)
@@ -203,16 +204,8 @@ class AE_CSNMF(nn.Module):
             
             self.conv_decoder = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures,self.win_size),padding=0)
             self.conv_decoder.weight.data = kmeans_centers.unsqueeze(1)
-            #self.conv_decoder.weight.data= self.conv_decoder.weight.data / 100
+            self.conv_decoder.weight.data= self.conv_decoder.weight.data / 10
         
-        if self.multi_scale:
-            self.conv_decoder2 = nn.Conv2d(in_channels=1,out_channels=self.num_pellets,kernel_size=(self.num_gestures, 41),padding=0)
-            #kmeans_centers_2 = torch.from_numpy(np.load(f"data/kmeans_pretrain/kmeans_centers_rtMRI_win_41_num_gestures_{self.num_gestures}.npy")) #[40, 340*41=13940]
-            
-            kmeans_centers_2 = kmeans_centers_2.reshape(self.num_gestures, self.num_pellets, 41)#[40, 340, 41]
-            kmeans_centers_2 = kmeans_centers_2.permute(1,0,2) #[340, 40,41]
-            self.conv_decoder2.weight.data = kmeans_centers_2.unsqueeze(1)
-            self.conv_decoder2.weight.data= self.conv_decoder2.weight.data / 100
 
         #torch.nn.init.normal_(self.conv_decoder.weight)
         
@@ -243,12 +236,8 @@ class AE_CSNMF(nn.Module):
         
         H = self.fc6(H_final)
         H = H.transpose(-1, -2)
-        H = F.relu(H)
-        
-        if self.multi_scale:
-            H2 = self.fc6_2(H_final)
-            H2 = H2.transpose(-1, -2)
-            H2 = F.relu(H2)
+       # H = F.relu(H)
+    
         
 
         x = x.transpose(-1, -2) #[B, A, t]
@@ -324,7 +313,7 @@ class AE_CSNMF(nn.Module):
             self_state[name].copy_(param)
             
             
-class VQ_AE_CSNMF(nn.Module):
+class AE_CSNMF2(nn.Module):
     def __init__(self, **args):
         super().__init__()
 
@@ -343,7 +332,7 @@ class VQ_AE_CSNMF(nn.Module):
         self.sparse_t_base = args['sparse_t_base']
         self.pr_joint = args['pr_joint']
         self.fixed_length = args['fixed_length']
-        
+
         ######Apply weights of k-means to gestures
         if self.num_gestures == 20:
             kmeans_centers = torch.from_numpy(np.load('data/kmeans_pretrain/kmeans_centers_20.npy')) #[40, 12*41=492]
@@ -357,21 +346,17 @@ class VQ_AE_CSNMF(nn.Module):
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
 
         self.conv_decoder_weight = nn.Parameter(kmeans_centers)
-        self.gesture_weight2 = self.conv_decoder_weight
-
-        self.vq_model = VQ_VAE2()
-        #self.vq_model2 = VQ_VAE2(**args)
+        self.gesture_weight = self.conv_decoder_weight
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
-            
 
     def forward(self, x, ema_inp_lens):
-        #shape of x is [B,t,A]
-        ori_inp = x
+        #shape of x is [B,A,T]
+        
 
-        time_steps = x.shape[1]
-        x = x.transpose(-1, -2) #[B, A, t]
+        time_steps = x.shape[2]
+        #x = x.transpose(-1, -2) #[B, A, t]
         H = F.relu(self.conv_encoder1(x)) #[B, C, t]
         H = F.relu(self.conv_encoder2(H)) #[B, C, t]
         #H = F.relu(self.conv_encoder3(H)) #[B, C, t]
@@ -391,59 +376,9 @@ class VQ_AE_CSNMF(nn.Module):
         sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
-        
-        x_transpose = x.transpose(-1,-2) #[B, T, A]
-        x_pad = F.pad(x, pad=(0,0,(self.win_size-1)//2,(self.win_size-1)//2,0,0), mode='constant', value=0) #[B,T+win,A]
-        x_unfold = x_pad.unfold(1, self.win_size,1) #[B, T, A, win]
-        x_unfold_reshape = x_unfold.reshape(x_unfold.shape[0], x_unfold.shape[1], x_unfold.shape[2]*x_unfold.shape[3]) #[B,T,A*win]
-        
-        
-        #loss_vq, quan_x_super, encoding_indices = self.vq_model(x_unfold_reshape)   
-        
-        #let us focus on vanilla super-vector
-        ####$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-        #print("0", ori_inp.shape)
-        ema_data_huge = ori_inp.reshape(-1, ori_inp.shape[-1]) #[t_super, 12]
-        #print("1", ema_data_huge.shape)
-        ema_data_huge = ema_data_huge.transpose(0, 1) #[12, t_super]
-        #print("2", ema_data_huge.shape)
-
-        ########################################################
-        ####################Then we are going to perform kmeans
-        ###########win_size = 41
-        ###########inp is [12, 716316]
-        ###########it should be [12, 716316*41]
-        ###########So we pad 20 on both sides
-        ema_data_huge_pad = F.pad(ema_data_huge, pad=(20,20,0,0), mode='constant', value=0) #[12, t_super]
-        #print("3", ema_data_huge_pad.shape)
-        ####################################
-
-        super_ema_data_huge_list = []
-        for t in range(ema_data_huge.shape[1]):
-            win_ema = ema_data_huge_pad[:,t:t+41] #[12, 41]
-            win_ema = win_ema.reshape(-1) #[12*41=492]
-            super_ema_data_huge_list.append(win_ema)
-
-        super_ema_data_huge = torch.stack(super_ema_data_huge_list, dim=0) #[t_super, 492]
-        #print("4", super_ema_data_huge.shape)
-        
-        x_super_batch = super_ema_data_huge
-        
-        ####$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-        loss_vq = torch.Tensor([0]).cuda()
-        for k in range(10):
-            loss_vq, _, _ = self.vq_model(x_super_batch) #inp shape should be [B, 12*41]
-        
-        self.gesture_weight = self.vq_model._embedding.weight.reshape(self.num_gestures, self.num_pellets, self.win_size).permute(1,0,2) #[40, 12, 41] -> (12, 40, 41)
-        
-        #inp_hat = F.conv1d(H, self.gesture_weight2.flip(2), padding=(self.win_size-1)//2)
         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
-        
 
-        if self.pr_joint:
-            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens, loss_vq
-        else:
-            return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, loss_vq
+        return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
 
     def loadParameters(self, path):
         self_state = self.state_dict()
@@ -460,5 +395,7 @@ class VQ_AE_CSNMF(nn.Module):
                 continue
             self_state[name].copy_(param)
 
+            
+            
 
     

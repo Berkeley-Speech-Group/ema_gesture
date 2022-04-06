@@ -246,16 +246,18 @@ def get_sparsity(H):
 def vis_H(model, **args):
     #ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    ema_data = ema_data[1462:1527,:]
     ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
     B = ema_data.shape[0]
     T = ema_data.shape[1]
     ema_len_batch = (torch.ones(B) * T).to(device)
     
+    ema_data = ema_data.transpose(-1, -2)
+    
+    
     if args['pr_joint']:
         ema_ori, ema_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
-        ema_ori, ema_hat, latent_H, _, _, _, _, _ = model(ema_data, None)
+        ema_ori, ema_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_data, None)
 
     latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
     
@@ -303,14 +305,16 @@ def vis_kinematics_ema(model, **args):
     T = ema_data.shape[1]
     ema_len_batch = (torch.ones(B) * T).to(device)
     
+    ema_data = ema_data.transpose(-1, -2)
+    
     if args['pr_joint']:
         ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
-        ema_ori, ema_hat,_,_,_,_,_ ,_= model(ema_data, None)
+        ema_ori, ema_hat,_,_,_,_,_  = model(ema_data, None)
 
     ema_data_hat = ema_hat.transpose(-1, -2).cpu().detach().numpy()
     
-    draw_kinematics(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
+    draw_kinematics_ema(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
 def vis_kinematics_rtMRI(model, **args):
     ######################################
@@ -372,6 +376,12 @@ def draw_kinematics_ema(ema_data, ema_data_hat, mode, title, **args):
         ema_data_hat = ema_data_hat.squeeze(0)
     
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
+    
+    ema_data = ema_data.T
+    #ema_data_hat = ema_data_hat.T
+    
+    print(ema_data.shape)
+    print(ema_data_hat.shape)
 
     
     x = np.arange(ema_data.shape[0])
@@ -458,8 +468,8 @@ def draw_kinematics_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     if mode == 'kinematics':
         ema_data_hat = ema_data_hat.squeeze(0)
         
-    ema_data = ema_data[:1000]
-    ema_data_hat = ema_data_hat[:1000]
+    ema_data = ema_data[:2000]
+    ema_data_hat = ema_data_hat[:2000]
     
     x = np.arange(ema_data.shape[0])
 
@@ -745,29 +755,37 @@ def draw_new_rtMRI(ema_data, ema_data_hat, mode, title, **args):
     for i in range(15):
         seg_ind = np.array(seg_indices[i])
         
-#         delta = (args['win_size']-1)//8
-
-#         plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], alpha=0.1, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta], data_y[seg_ind][:,delta], color=colors[i], alpha=0.2, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta*2], data_y[seg_ind][:,delta*2], color=colors[i], alpha=0.3, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta*3], data_y[seg_ind][:,delta*3], color=colors[i], alpha=0.4, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta*4], data_y[seg_ind][:,delta*4], color=colors[i], alpha=0.5, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta*5], data_y[seg_ind][:,delta*5], color=colors[i], alpha=0.6, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta*6], data_y[seg_ind][:,delta*6], color=colors[i], alpha=0.7, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta*7], data_y[seg_ind][:,delta*7], color=colors[i], alpha=0.8, linewidth=1)
-#         plt.plot(data_x[seg_ind][:,delta*8], data_y[seg_ind][:,delta*8], color=colors[i], alpha=0.9, linewidth=1, label=art_labs_unique[i])
-
-        delta = (args['win_size']-1)
+        
+        
+        delta = (args['win_size']-1)//8
 
         plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], alpha=0.1, linewidth=1)
-        plt.plot(data_x[seg_ind][:,1], data_y[seg_ind][:,1], color=colors[i], alpha=0.2, linewidth=1)
-        plt.plot(data_x[seg_ind][:,2], data_y[seg_ind][:,2], color=colors[i], alpha=0.3, linewidth=1)
-        plt.plot(data_x[seg_ind][:,3], data_y[seg_ind][:,3], color=colors[i], alpha=0.4, linewidth=1)
-        plt.plot(data_x[seg_ind][:,4], data_y[seg_ind][:,4], color=colors[i], alpha=0.5, linewidth=1)
-        plt.plot(data_x[seg_ind][:,5], data_y[seg_ind][:,5], color=colors[i], alpha=0.6, linewidth=1)
-        plt.plot(data_x[seg_ind][:,6], data_y[seg_ind][:,6], color=colors[i], alpha=0.7, linewidth=1)
-        plt.plot(data_x[seg_ind][:,7], data_y[seg_ind][:,7], color=colors[i], alpha=0.8, linewidth=1)
-        plt.plot(data_x[seg_ind][:,8], data_y[seg_ind][:,8], color=colors[i], alpha=0.9, linewidth=1, label=art_labs_unique[i])
+        plt.plot(data_x[seg_ind][:,delta], data_y[seg_ind][:,delta], color=colors[i], alpha=0.2, linewidth=1)
+        plt.plot(data_x[seg_ind][:,delta*2], data_y[seg_ind][:,delta*2], color=colors[i], alpha=0.3, linewidth=1)
+        plt.plot(data_x[seg_ind][:,delta*3], data_y[seg_ind][:,delta*3], color=colors[i], alpha=0.4, linewidth=1)
+        plt.plot(data_x[seg_ind][:,delta*4], data_y[seg_ind][:,delta*4], color=colors[i], alpha=0.5, linewidth=1)
+        plt.plot(data_x[seg_ind][:,delta*5], data_y[seg_ind][:,delta*5], color=colors[i], alpha=0.6, linewidth=1)
+        plt.plot(data_x[seg_ind][:,delta*6], data_y[seg_ind][:,delta*6], color=colors[i], alpha=0.7, linewidth=1)
+        plt.plot(data_x[seg_ind][:,delta*7], data_y[seg_ind][:,delta*7], color=colors[i], alpha=0.8, linewidth=1)
+        plt.plot(data_x[seg_ind][:,delta*8], data_y[seg_ind][:,delta*8], color=colors[i], alpha=0.9, linewidth=1, label=art_labs_unique[i])
+
+#         delta = (args['win_size']-1)
+
+#         plt.plot(data_x[seg_ind][:,0], data_y[seg_ind][:,0], color=colors[i], alpha=0.1, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,1], data_y[seg_ind][:,1], color=colors[i], alpha=0.2, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,2], data_y[seg_ind][:,2], color=colors[i], alpha=0.3, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,3], data_y[seg_ind][:,3], color=colors[i], alpha=0.4, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,4], data_y[seg_ind][:,4], color=colors[i], alpha=0.5, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,5], data_y[seg_ind][:,5], color=colors[i], alpha=0.6, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,6], data_y[seg_ind][:,6], color=colors[i], alpha=0.7, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,7], data_y[seg_ind][:,7], color=colors[i], alpha=0.8, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,8], data_y[seg_ind][:,8], color=colors[i], alpha=0.9, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,9], data_y[seg_ind][:,9], color=colors[i], alpha=1.1, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,10], data_y[seg_ind][:,10], color=colors[i], alpha=1.2, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,11], data_y[seg_ind][:,11], color=colors[i], alpha=1.3, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,12], data_y[seg_ind][:,12], color=colors[i], alpha=1.4, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,13], data_y[seg_ind][:,13], color=colors[i], alpha=1.5, linewidth=1)
+#         plt.plot(data_x[seg_ind][:,14], data_y[seg_ind][:,14], color=colors[i], alpha=1.6, linewidth=1, label=art_labs_unique[i])
         
 
 
@@ -842,13 +860,15 @@ def vis_gestures_ema(model, **args):
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
         gestures = model.gesture_weight.unsqueeze(1)
+        
+    print(gestures.shape)
     
     ema_id, wav_path, mel_data, text_trans = ema2info(**args)
-    draw_mel_ema(mels=mel_data, mode=ema_id, title=text_trans)
+    #draw_mel_ema(mels=mel_data, mode=ema_id, title=text_trans)
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        draw_kinematics_ema(gestures[:,0,gesture_index,:].transpose(0,1).unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        #draw_kinematics_ema(gestures[:,0,gesture_index,:].unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
     
         
@@ -871,6 +891,8 @@ def vis_gestures_rtMRI(model, **args):
         gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
     else:
         gestures = model.conv_decoder.weight
+        
+    gestures = gestures * 10
         
     #shape of gestures: [num_pellets, 1, num_gestures, win_size]
     

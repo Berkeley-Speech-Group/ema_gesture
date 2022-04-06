@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from dataloader import EMA_Dataset, IEEE_Dataset, rtMRI_Dataset, collate
-from models.csnmf import AE_CSNMF, PR_Model, VQ_AE_CSNMF
+from models.csnmf import AE_CSNMF, AE_CSNMF2, PR_Model
 from models.hifigan_model import Generator, MultiPeriodDiscriminator, MultiScaleDiscriminator, feature_loss, generator_loss, discriminator_loss
 from models.utils_hifigan import plot_spectrogram, scan_checkpoint, load_checkpoint, save_checkpoint
 from utils import vis_gestures_ema, vis_gestures_rtMRI, vis_kinematics_ema, vis_gestures_ieee, vis_kinematics_ieee, vis_kinematics_rtMRI, vis_H
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     if args.pr_ema or args.pr_mel or args.pr_stft or args.pr_h or args.pr_wav2vec2 or args.pr_mfcc:
         model = PR_Model(**vars(args)).to(device)
     elif args.resynthesis:
-        model = AE_CSNMF(**vars(args)).to(device)
+        model = AE_CSNMF2(**vars(args)).to(device)
     elif args.vq_resynthesis:
         model = VQ_AE_CSNMF(**vars(args)).to(device)
     elif args.ema2speech or args.test_ema2speech:

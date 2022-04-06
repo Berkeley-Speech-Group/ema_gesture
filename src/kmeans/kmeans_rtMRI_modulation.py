@@ -10,7 +10,64 @@ from tqdm import tqdm
 import argparse
 import matplotlib.pyplot as plt
 
-def kmeans_ema(win_size=None,  num_gestures=None):
+from sklearn.cluster import MiniBatchKMeans
+
+
+class ApplyKmeans(object):
+    def __init__(self, km_path):
+        self.km_model = joblib.load(km_path)
+        self.C_np = self.km_model.cluster_centers_.transpose()
+        self.Cnorm_np = (self.C_np ** 2).sum(0, keepdims=True)
+
+        self.C = torch.from_numpy(self.C_np)
+        self.Cnorm = torch.from_numpy(self.Cnorm_np)
+        if torch.cuda.is_available():
+            self.C = self.C.cuda()
+            self.Cnorm = self.Cnorm.cuda()
+
+    def __call__(self, x):
+        if isinstance(x, torch.Tensor):
+            dist = (
+                x.pow(2).sum(1, keepdim=True)
+                - 2 * torch.matmul(x, self.C)
+                + self.Cnorm
+            )
+            return dist.argmin(dim=1).cpu().numpy()
+        else:
+            dist = (
+                (x ** 2).sum(1, keepdims=True)
+                - 2 * np.matmul(x, self.C_np)
+                + self.Cnorm_np
+            )
+            return np.argmin(dist, axis=1)
+
+def get_km_model(
+    n_clusters,
+    init,
+    max_iter,
+    batch_size,
+    tol,
+    max_no_improvement,
+    n_init,
+    reassignment_ratio,
+):
+    return MiniBatchKMeans(
+        n_clusters=n_clusters,
+        init=init,
+        max_iter=max_iter,
+        batch_size=batch_size,
+        verbose=1,
+        compute_labels=False,
+        tol=tol,
+        max_no_improvement=max_no_improvement,
+        init_size=None,
+        n_init=n_init,
+        reassignment_ratio=reassignment_ratio,
+    )
+
+def kmeans_ema(**args):
+    win_size = args['win_size']
+    num_gestures = args['num_gestures']
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
     ema_paths = []
@@ -59,11 +116,6 @@ def kmeans_ema(win_size=None,  num_gestures=None):
     for i in range(len(test_arr)):
         if test_arr[i] < 10:
             test_arr[i] = 0
-#     x = np.arange(len(test_arr))
-#     plt.figure(figsize=(20.1, 6))
-#     plt.plot(x[:500], test_arr[:500])
-#     plt.savefig("test.png")
-#     exit()
     
             
     ######################################################## Find Peak ##########################################################
@@ -89,6 +141,7 @@ def kmeans_ema(win_size=None,  num_gestures=None):
             for j in range(index - h_win_size, index + h_win_size + 1):
                 if j == index:
                     continue
+                ######### Filtering ###########
                 if j in peak_indices_set:
                     flag = True
                     break
@@ -113,54 +166,123 @@ def kmeans_ema(win_size=None,  num_gestures=None):
     
     ###############################################    collect ema kinematics    ###########################################
     super_ema_data_huge_list_con = []
+    super_ema_data_huge_list_con_ori = []
     
-    ###############. Peak Part. #################
+    # # ###############. Peak Part.#################
     for i in range(len(peak_indices_sparse)):
         index = peak_indices_sparse[i]
         if ema_data_huge[:, i - h_win_size : i + h_win_size + 1].shape[1] != win_size:
             continue
-        super_ema_data_huge_list_con.append(ema_data_huge[:, i - h_win_size : i + h_win_size + 1])
+        embed = ema_data_huge[:, i - h_win_size : i + h_win_size + 1] #[340, 15]
+        if args['hamming_window']:
+            filter_window = torch.hamming_window(win_size).reshape(1, -1) #[1, 15]
+            embed_after_filter = embed * filter_window #[340, 15]
+        elif args['hann_window']:
+            filter_window = torch.hann_window(win_size).reshape(1, -1) #[1, 15]
+            embed_after_filter = embed * filter_window #[340, 15]
+        else:
+            embed_after_filter = embed
+        super_ema_data_huge_list_con.append(embed_after_filter)
+        super_ema_data_huge_list_con_ori.append(embed)
         
         
     ###############. Valley Part. #################
-    for i in range(len(peak_indices_sparse)):
-        index = peak_indices_sparse[i]
-        if i + 1 <= len(peak_indices_sparse) - 1:
-            next_index = peak_indices_sparse[i + 1]
-        start_indices = torch.linspace(index, next_index-win_size, 10)
-        for start_index in start_indices:
-            start_index = int(start_index)
-            if ema_data_huge[:, start_index: start_index + win_size].shape[1] != win_size:
-                continue
-            super_ema_data_huge_list_con.append(ema_data_huge[:, start_index: start_index + win_size])
+    # for i in range(len(peak_indices_sparse)):
+    #     index = peak_indices_sparse[i]
+    #     if i + 1 <= len(peak_indices_sparse) - 1:
+    #         next_index = peak_indices_sparse[i + 1]
+    #     start_indices = torch.linspace(index, next_index-win_size, 3)
+    #     for start_index in start_indices:
+    #         start_index = int(start_index)
+    #         if ema_data_huge[:, start_index: start_index + win_size].shape[1] != win_size:
+    #             continue
+    #         super_ema_data_huge_list_con.append(ema_data_huge[:, start_index: start_index + win_size])
             
         
     super_ema_data_huge_con = torch.stack(super_ema_data_huge_list_con, dim=0) #[N, 340, 15]
+    super_ema_data_huge_con_ori = torch.stack(super_ema_data_huge_list_con_ori, dim=0) #[N, 340, 15]
     print(super_ema_data_huge_con.shape)
     super_ema_data_huge_con = super_ema_data_huge_con.reshape(super_ema_data_huge_con.shape[0], -1).to(device) #[N, 340*15]
+    super_ema_data_huge_con_ori = super_ema_data_huge_con_ori.reshape(super_ema_data_huge_con_ori.shape[0], -1).to(device) #[N, 340*15]
 
     print("shape of original data is:", super_ema_data_huge_con.shape) #[452849, 13940]
     
+    #################################################################### kmeans 
     
-    #################################################################### kmeans ##############################################################################
+    feat = super_ema_data_huge_con.detach().cpu().numpy() #(N, d_super)
+    feat_ori = super_ema_data_huge_con_ori.detach().cpu().numpy() #(N, d_super)
     
-    kmeans_model = kmeans_fast(n_clusters=num_gestures, max_iter=1000, mode='euclidean', verbose=1)
-    x = super_ema_data_huge_con
-    cluster_ids = kmeans_model.fit_predict(x)    
-    cluster_centers = kmeans_model.centroids
+    
+    km_model = get_km_model(
+        n_clusters=num_gestures,
+        init='k-means++',
+        max_iter=100,
+        batch_size=10000,
+        tol=0.0,
+        max_no_improvement=100,
+        n_init=20,
+        reassignment_ratio=0.0,
+    )
+    
+    km_model.fit(feat)
+    
+    if args['recompute_center']:
+        C_np = km_model.cluster_centers_.transpose()
+        Cnorm_np = (C_np ** 2).sum(0, keepdims=True)
+        dist = (
+            (feat ** 2).sum(1, keepdims=True)
+            - 2 * np.matmul(feat, C_np)
+            + Cnorm_np
+        )
+        
+        km_labels = np.argmin(dist, axis=1)  #(N, )
+        feat = super_ema_data_huge_con_ori.detach().cpu()
+        km_labels = torch.from_numpy(km_labels)
+        
+        #Compute Center
+        M = torch.zeros(km_labels.max()+1, len(feat))
+        M[km_labels, torch.arange(len(feat))] = 1
+        M = torch.nn.functional.normalize(M, p=1, dim=1)
+        cluster_centers = torch.mm(M, feat).numpy()
+        
+    elif args['recompute_centroid']:
+        
+        C_np = km_model.cluster_centers_ #(num_gestures, D)
+        
+        feat = feat.transpose()
+        featnorm_np = (feat ** 2).sum(0, keepdims=True)
+        
+        dist = (
+            (C_np ** 2).sum(1, keepdims=True)
+            - 2 * np.matmul(C_np, feat)
+            + featnorm_np
+        )  #(num_gestures, N)
+        
+        print("dist.shape", dist.shape)
+        centroid_labels = np.argmin(dist, axis=1)  #(num_gestures, )
+        cluster_centers = feat_ori[centroid_labels, :]
+        
+    else:
+        cluster_centers = km_model.cluster_centers_
+    
+    
     print("kmeans finished!!")
     print("shape of centers of kmeans is", cluster_centers.shape)
-    print("shape of ids of kmeans is", cluster_ids.shape)
-    np.save(f"data/kmeans_pretrain/kmeans_centers_rtMRI_modulation_win_{win_size}_num_gestures_{num_gestures}.npy", cluster_centers.detach().cpu().numpy())
-    np.save(f"data/kmeans_pretrain/kmeans_ids_rtMRI_modulation_win_{win_size}_num_gestures_{num_gestures}.npy", cluster_ids.detach().cpu().numpy())    
+    #np.save(f"data/kmeans_pretrain/kmeans_centers_rtMRI_modulation_win_{win_size}_num_gestures_{num_gestures}.npy", cluster_centers.detach().cpu().numpy())
+    np.save(f"data/kmeans_pretrain/kmeans_centers_plus_rtMRI_modulation_win_{win_size}_num_gestures_{num_gestures}.npy", cluster_centers)
     
 
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description = "main python code")
-    parser.add_argument('--win_size', type=int, default=15, help='')
+    parser.add_argument('--win_size', type=int, default=100, help='')
     parser.add_argument('--num_gestures', type=int, default=20, help='')
+    parser.add_argument('--hamming_window', action='store_true', help='')
+    parser.add_argument('--hann_window', action='store_true', help='')
+    parser.add_argument('--recompute_center', action='store_true', help='')
+    parser.add_argument('--recompute_centroid', action='store_true', help='')
+    
     args = parser.parse_args()
 
-    kmeans_ema(win_size=args.win_size, num_gestures=args.num_gestures)
+    kmeans_ema(**vars(args))
 
