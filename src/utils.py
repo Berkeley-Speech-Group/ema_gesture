@@ -76,7 +76,7 @@ def pySTFT(x, fft_length=1024, hop_length=256):
 
 def wav2mel(wav):
     #input size of wav should be [1, length]
-    mel_basis = mel(16000, 1024, fmin=90, fmax=7600, n_mels=80).T
+    mel_basis = mel(sr=16000, n_fft=1024, fmin=90, fmax=7600, n_mels=80).T
     min_level = np.exp(-100 / 20 * np.log(10))
     b, a = butter_highpass(30, 16000, order=5)
 
@@ -197,6 +197,21 @@ def vis_H(model, **args):
         ema_ori, ema_hat, latent_H, _, _, _, _ = model(ema_data, None)
 
     latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
+    
+    for i in range(latent_H.shape[0]):
+        for j in range(latent_H.shape[1]):
+            if latent_H[i][j] <= 0.22:
+                latent_H[i][j] = 0
+                
+            if j <= 50:
+                latent_H[i][j] = 0
+                
+#     for j in range(latent_H.shape[1]):
+#         temp = latent_H[10][j]
+#         latent_H[10][j] = latent_H[29][j]
+#         latent_H[29][j] = temp
+        
+
     
     plt.figure(figsize=(20,15)) 
     ax = plt.gca()
@@ -360,18 +375,18 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     
     len_data = len(data_x_1)
     
-#     plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=4)
-#     plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=10)
-#     plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=4)
-#     plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=10)
-#     plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=4)
-#     plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=10)
-    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=4)
-    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=10)
-#     plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=4)
-#     plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=10)
-    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=4)
-    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=10)
+    plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=3)
+    plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=7)
+    plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=3)
+    plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=7)
+    plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=3)
+    plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=7)
+    plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=3)
+    plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=7)
+    plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=3)
+    plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=7)
+    plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=3)
+    plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=7)
 
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)
@@ -385,6 +400,7 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
 def vis_gestures(model, **args):
     #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
     gestures = model.gesture_weight.unsqueeze(1)
+    gestures = gestures * 10
     ema_id, wav_path, mel_data, text_trans = ema2info(**args)
     draw_mel(mels=mel_data, mode=ema_id, title=text_trans)
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)

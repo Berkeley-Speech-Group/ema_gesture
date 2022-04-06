@@ -148,10 +148,11 @@ class AE_CSNMF2(nn.Module):
             kmeans_centers = torch.from_numpy(np.load('kmeans_centers_80.npy')) #[40, 12*41=492]
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
+        kmeans_centers = kmeans_centers / 10
 
         self.conv_decoder_weight = nn.Parameter(kmeans_centers)
         self.gesture_weight = self.conv_decoder_weight
-
+        
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
 
