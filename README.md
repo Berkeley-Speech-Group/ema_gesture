@@ -2,15 +2,8 @@
 
 A Pytorch Implementation of (Varitional) Auto-Encoder Convolutional Non-Negative Matrix Factorization for Gestural Unit Discovery
 
-## Tracking
 
-### Slides
 
-https://docs.google.com/presentation/d/10XbOxXiPCrw9Go2Qp_-aBY7Cp7l6JDoCT87a2W8VhpM/edit?usp=sharing
-
-### Docs
-
-https://www.dropbox.com/scl/fi/orhv9g851sfftdbr0lssz/Gestural-Unit-Discovery2022-NAACL-Jan16Jan15-JSTSP.paper?dl=0&rlkey=bbhoawttjstpbl255mutxk8df
 
 ## Environents
 
@@ -34,11 +27,8 @@ pip install seaborn
 
 ```
 
-## Datasets
+## Data
 
-First, download EMA data from http://tts.speech.cs.cmu.edu/gopalakr/emadata.tgz, extract it. Check .gitignore for the path of "emadata". Note that we use "nema" data, which is the standardized version of the original data. There are 4579 wav utterances but 4409 ema kinematics data. To handle such mismatch, we only take the ema data that has its corresponding waveform. Actually the first stage(Task 1 of proposal) focuses on gestural unit discovery and only ema data is used.  
-
-Second, convert the standardized ema kinematics data(nema) to npy.
 
 ```
 python ./src/preprocess/nema_label2npy.py
@@ -73,37 +63,4 @@ python src/main.py --sparse_c --sparse_c_factor 10 --spk_id mngu --sparse_t --sp
 
 ```
 python src/main.py --pr_mel --save_path save_models/pr_mel_bs8
-```
-
-##  Phoneme Recognition on EMA
-
-```
-python src/main.py --pr_ema --save_path save_models/pr_ema_bs8
-```
-
-##  Phoneme Recognition on MFCC
-
-```
-python src/main.py --pr_mfcc --save_path save_models/pr_mfcc_bs8
-```
-
-##  Phoneme Recognition on STFT
-
-```
-python src/main.py --pr_stft --save_path save_models/pr_stft_bs8
-```
-
-
-## Launch Tensorboard
-
-```
-tensorboard --logdir=runs
-```
-
-
-## Test | Visuallize Gestures, Reconstructions and Mel_Spec
-
-
-```
-python src/main.py --vis_gestures --model_path save_models/test/best.pth --resynthesis --test_ema_path emadata/cin_us_mngu0/nema/mngu0_s1_0300.npy --spk_id mngu0
 ```
