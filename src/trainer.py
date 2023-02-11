@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
-from ctcdecode import CTCBeamDecoder
+# from ctcdecode import CTCBeamDecoder
 from config import PHONEME_LIST, PHONEME_LIST_WITH_BLANK, PHONEME_MAP
 from utils import voicing_fn, wav2mel
 import Levenshtein
@@ -47,8 +47,8 @@ def eval_resynthesis_ema(model, ema_dataloader_test, device, **args):
     loss_ctc_e = []
     for i, (ema_batch, wav_batch, mel_batch) in enumerate(ema_dataloader_test):
         
-        ema_batch = ema_batch.to(device)
-        mel_batch = mel_batch.to(device)
+        # ema_batch = ema_batch.to(device)
+        # mel_batch = mel_batch.to(device)
 
         model.eval()
 
@@ -190,19 +190,17 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
             
         for i, (ema_batch, wav_batch, mel_batch) in enumerate(ema_dataloader_train):
 
-            ema_batch = ema_batch.to(device)
+            # ema_batch = ema_batch.cuda()
             
             sys.stdout.write("\rTraining Epoch (%d)| Processing (%d/%d)" %(e, i, training_size/args['batch_size']))
             model.train()
             optimizer.zero_grad()
-            
-            inp, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_batch, None)
-            
-            rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
 
+            inp, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_batch, None)
+
+            rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
                 
             loss = args['rec_factor']*rec_loss
-
 
             if args['sparse_c']:
                 #loss += -args['sparse_c_factor']*sparsity_c

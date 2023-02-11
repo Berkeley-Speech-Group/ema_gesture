@@ -196,7 +196,8 @@ def draw_mel(mels, mode, title):
 
 def ema2info(**args):
     cur_ema_id = args['test_ema_path'].split("/")[-1][:-4]
-    spk_path = os.path.join(os.path.join(args['test_ema_path'].split("/")[0], args['test_ema_path'].split("/")[1]), args['test_ema_path'].split("/")[2])
+    ema_spk_e = args['test_ema_path'].split("/")[-3]
+    spk_path = f"/data/jiachenlian/data_nsf/emadata/{ema_spk_e}"
     wav_path = os.path.join(os.path.join(spk_path, 'wav'), cur_ema_id+'.wav')
     wav_data, _ = torchaudio.load(wav_path)
     mel_data = torch.FloatTensor(wav2mel(wav_data)).transpose(0,1).unsqueeze(0)
@@ -246,10 +247,10 @@ def get_sparsity(H):
 def vis_H(model, **args):
     #ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     ema_data = np.load(args['test_ema_path']) #[t, 12]
-    ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
+    ema_data = torch.FloatTensor(ema_data).unsqueeze(0)
     B = ema_data.shape[0]
     T = ema_data.shape[1]
-    ema_len_batch = (torch.ones(B) * T).to(device)
+    ema_len_batch = (torch.ones(B) * T)
     
     ema_data = ema_data.transpose(-1, -2)
     
@@ -275,7 +276,7 @@ def vis_H(model, **args):
     ax.set_yticks([])
     #plt.title(text_trans, fontsize=30)
     #plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"), bbox_inches='tight')
-    plt.savefig('latent_H'+"_"+".png", bbox_inches='tight')
+    plt.savefig('/home/jiachenlian/ema_gesture/latent_H'+"_"+".png", bbox_inches='tight')
     plt.clf()
 
     #we try to print rows that are "activated"
@@ -300,20 +301,20 @@ def vis_kinematics_ema(model, **args):
     ######################################
     ############Reconstruction
     ######################################
-    ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
+    ema_data = torch.FloatTensor(ema_data).unsqueeze(0)
     B = ema_data.shape[0]
     T = ema_data.shape[1]
-    ema_len_batch = (torch.ones(B) * T).to(device)
+    ema_len_batch = (torch.ones(B) * T)
     
     ema_data = ema_data.transpose(-1, -2)
-    
+
     if args['pr_joint']:
         ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
     else:
         ema_ori, ema_hat,_,_,_,_,_  = model(ema_data, None)
 
     ema_data_hat = ema_hat.transpose(-1, -2).cpu().detach().numpy()
-    
+
     draw_kinematics_ema(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
 def vis_kinematics_rtMRI(model, **args):
@@ -353,10 +354,10 @@ def vis_kinematics_ieee(model, **args):
     ######################################
     ############Reconstruction
     ######################################
-    ema_data = torch.FloatTensor(ema_data).unsqueeze(0).to(device)
+    ema_data = torch.FloatTensor(ema_data).unsqueeze(0)
     B = ema_data.shape[0]
     T = ema_data.shape[1]
-    ema_len_batch = (torch.ones(B) * T).to(device)
+    ema_len_batch = (torch.ones(B) * T)
     
     if args['pr_joint']:
         ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
@@ -382,7 +383,6 @@ def draw_kinematics_ema(ema_data, ema_data_hat, mode, title, **args):
     
     print(ema_data.shape)
     print(ema_data_hat.shape)
-
     
     x = np.arange(ema_data.shape[0])
 
@@ -519,7 +519,7 @@ def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
     labels = ['tongue dorsum', 'tongue blade', 'tongue tip', 'lower incisor', 'upper lip', 'lower lip']
     means = []
     stds = []
-    stats_path = os.path.join(os.path.join('data/emadata', 'cin_us_'+spk_id), 'ema.stats')
+    stats_path = os.path.join(os.path.join('/data/jiachenlian/data_nsf/emadata', 'cin_us_'+spk_id), 'ema.stats')
     with open(stats_path) as f:
         while True:
             line = f.readline()
@@ -530,6 +530,7 @@ def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
             stds.append(float(line_list[1]))
     means = np.array(means)
     stds = np.array(stds)
+
     
     data_x = []
     data_y = []
@@ -563,8 +564,10 @@ def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
     plt.yticks([])
     #plt.legend(prop={'size': 50})
     plt.title(title,fontdict = {'fontsize' : 50})
+
     #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
-    plt.savefig(title+"_2d_"+".png")
+    plt.savefig("/home/jiachenlian/ema_gesture/"+title+"_2d"+".png")
+
     plt.clf()
     
     
@@ -869,7 +872,8 @@ def vis_gestures_ema(model, **args):
     for i in range(args['num_gestures']):
         gesture_index = i
         #draw_kinematics_ema(gestures[:,0,gesture_index,:].unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
-        draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
+        draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture'+str(gesture_index), **args)
+
     
         
 def vis_gestures_ieee(model, **args):

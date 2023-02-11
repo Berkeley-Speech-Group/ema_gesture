@@ -18,7 +18,7 @@ def loadWAV(filename, max_points=32000):
 
 class EMA_Dataset:
     
-    def __init__(self, path='data/emadata', mode='train', **args):
+    def __init__(self, path='/data/jiachenlian/data_nsf/emadata', mode='train', **args):
         
         ####record paths for wav file and nema file
         ####train/test = 80%/20%
@@ -36,38 +36,38 @@ class EMA_Dataset:
         
         if self.mode == 'train':
             if self.spk_id_setting == 'mngu0':
-                ema_metalist_path = 'data/emadata/metalist_ema_mngu0_train.txt'
-                wav_metalist_path = 'data/emadata/metalist_wav_mngu0_train.txt'
-                lab_metalist_path = 'data/emadata/metalist_lab_mngu0_train.txt'
+                ema_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_ema_mngu0_train.txt'
+                wav_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_wav_mngu0_train.txt'
+                lab_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_lab_mngu0_train.txt'
             elif self.spk_id_setting == 'all':
-                ema_metalist_path = 'data/emadata/metalist_ema_train_all.txt'
-                wav_metalist_path = 'data/emadata/metalist_wav_train_all.txt'
-                lab_metalist_path = 'data/emadata/metalist_lab_train_all.txt'
+                ema_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_ema_train_all.txt'
+                wav_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_wav_train_all.txt'
+                lab_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_lab_train_all.txt'
         else:
-            ema_metalist_path = 'data/emadata/metalist_ema_mngu0_test.txt'
-            wav_metalist_path = 'data/emadata/metalist_wav_mngu0_test.txt'
-            lab_metalist_path = 'data/emadata/metalist_lab_mngu0_test.txt'
+            ema_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_ema_mngu0_test.txt'
+            wav_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_wav_mngu0_test.txt'
+            lab_metalist_path = '/data/jiachenlian/data_nsf/emadata/metalist_lab_mngu0_test.txt'
             
         with open(ema_metalist_path) as f:
             while True:
                 line = f.readline()
                 if not line:
                     break
-                self.ema_npy_paths.append("data/"+line[:-1])
+                self.ema_npy_paths.append("/data/jiachenlian/data_nsf/"+line[:-1])
                 
         with open(wav_metalist_path) as f:
             while True:
                 line = f.readline()
                 if not line:
                     break
-                self.wav_paths.append("data/"+line[:-1])
+                self.wav_paths.append("/data/jiachenlian/data_nsf/"+line[:-1])
                 
         with open(lab_metalist_path) as f:
             while True:
                 line = f.readline()
                 if not line:
                     break
-                self.lab_npy_paths.append("data/"+line[:-1])
+                self.lab_npy_paths.append("/data/jiachenlian/data_nsf/"+line[:-1])
     
         print("###############################all data start#############################################")
         print("spk setting is ", self.spk_id_setting)

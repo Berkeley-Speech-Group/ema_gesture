@@ -90,7 +90,7 @@ parser.add_argument('--config', type=str, default='', help='')
 
 args = parser.parse_args()
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if __name__ == "__main__":
     torch.manual_seed(12)
@@ -113,7 +113,11 @@ if __name__ == "__main__":
     if args.pr_ema or args.pr_mel or args.pr_stft or args.pr_h or args.pr_wav2vec2 or args.pr_mfcc:
         model = PR_Model(**vars(args)).to(device)
     elif args.resynthesis:
-        model = AE_CSNMF2(**vars(args)).to(device)
+        # model = AE_CSNMF2(**vars(args)).to(device)
+        model = AE_CSNMF2(**vars(args))
+        # model = model.cuda()
+
+
     elif args.vq_resynthesis:
         model = VQ_AE_CSNMF(**vars(args)).to(device)
     elif args.ema2speech or args.test_ema2speech:
@@ -162,7 +166,7 @@ if __name__ == "__main__":
 
     if args.vis_gestures:
         print("###################################Visualize Gestures#########################################")
-        os.system("sudo rm -rf *.png")
+        # os.system("sudo rm -rf *.png")
         vis_H(model, **vars(args))
         if args.dataset == 'ema':
             vis_kinematics_ema(model, **vars(args))
@@ -181,7 +185,7 @@ if __name__ == "__main__":
         dataloader_train = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=args.batch_size, shuffle=True)
         dataloader_test = torch.utils.data.DataLoader(dataset=dataset_test, batch_size=args.batch_size, shuffle=False)   
         training_size = len(dataset_train)
-        
+
     elif args.dataset == 'ieee':
         dataset_train = IEEE_Dataset(mode='train', **vars(args))     
         dataset_test = IEEE_Dataset(mode='test', **vars(args))    
@@ -200,7 +204,6 @@ if __name__ == "__main__":
         print("No dataset specified!!")
         exit()
         
-    
     if args.eval_pr:
         print("Eval PER:")
         ctc_loss, per = _eval_pr(model, dataloader_test, device, **vars(args))
@@ -221,11 +224,13 @@ if __name__ == "__main__":
         lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.9)
         #lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=args.lr_decay_rate, patience=10, threshold=0.0001)
 
+
     if args.pr_mel or args.pr_ema or args.pr_stft or args.pr_wav2vec2 or args.pr_mfcc:
         trainer_pr(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
     elif args.resynthesis or args.vq_resynthesis:
         if args.dataset == 'ema':
             trainer_resynthesis_ema(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
+            print("3333")
         elif args.dataset == 'ieee':
             trainer_resynthesis_ieee(model, optimizer, lr_scheduler, dataloader_train, dataloader_test, device, training_size, **vars(args))
         elif args.dataset == 'rtMRI':
