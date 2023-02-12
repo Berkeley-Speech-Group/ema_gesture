@@ -308,12 +308,9 @@ def vis_kinematics_ema(model, **args):
     
     ema_data = ema_data.transpose(-1, -2)
 
-    if args['pr_joint']:
-        ema_ori, ema_hat, _,sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
-    else:
-        ema_ori, ema_hat,_,_,_,_,_  = model(ema_data, None)
+    ema_ori, ema_hat = model(ema_data, None)
 
-    ema_data_hat = ema_hat.transpose(-1, -2).cpu().detach().numpy()
+    ema_data_hat = ema_hat.cpu().detach().numpy()
 
     draw_kinematics_ema(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
