@@ -171,18 +171,18 @@ class EMA_Model(nn.Module):
 
         #hidden_dim should be equal to num of pellets
         self.conformer_encoder_layer1 = ConformerLayer(hid_dim=12, n_head=4, filter_size=5, dropout=0.1)
-        self.conformer_encoder_layer2 = ConformerLayer(hid_dim=12, n_head=4, filter_size=3, dropout=0.1)
-        self.conformer_encoder_layer3 = ConformerLayer(hid_dim=12, n_head=4, filter_size=3, dropout=0.1)
+        self.conformer_encoder_layer2 = ConformerLayer(hid_dim=24, n_head=4, filter_size=3, dropout=0.1)
+        self.conformer_encoder_layer3 = ConformerLayer(hid_dim=48, n_head=4, filter_size=3, dropout=0.1)
         self.conformer_encoder_layer4 = ConformerLayer(hid_dim=12, n_head=4, filter_size=3, dropout=0.1)
 
         self.subsampling_layer1 = ConcatSubsampling(idim=12, odim=12, dropout_rate=0.1) #down sampling by 2X       
-        self.subsampling_layer2 = ConcatSubsampling(idim=12, odim=12, dropout_rate=0.1) #down sampling by 2X
+        self.subsampling_layer2 = ConcatSubsampling(idim=24, odim=12, dropout_rate=0.1) #down sampling by 2X
 
-        self.upsampling_layer1 = ConcatUpsampling(idim=12, odim=12, dropout_rate=0.1) #up sampling by 2X
-        self.upsampling_layer2 = ConcatUpsampling(idim=12, odim=12, dropout_rate=0.1) #up sampling by 2X
+        self.upsampling_layer1 = ConcatUpsampling(idim=48, odim=12, dropout_rate=0.1) #up sampling by 2X
+        self.upsampling_layer2 = ConcatUpsampling(idim=24, odim=12, dropout_rate=0.1) #up sampling by 2X
 
-        self.conformer_decoder_layer1 = ConformerLayer(hid_dim=24, n_head=4, filter_size=5, dropout=0.1)
-        self.conformer_decoder_layer2 = ConformerLayer(hid_dim=12, n_head=4, filter_size=5, dropout=0.1)
+        self.conformer_decoder_layer1 = ConformerLayer(hid_dim=48, n_head=4, filter_size=5, dropout=0.1)
+        self.conformer_decoder_layer2 = ConformerLayer(hid_dim=24, n_head=4, filter_size=5, dropout=0.1)
         self.conformer_decoder_layer3 = ConformerLayer(hid_dim=12, n_head=4, filter_size=5, dropout=0.1)
 
     def forward(self, x, ema_inp_lens):
@@ -190,24 +190,20 @@ class EMA_Model(nn.Module):
         time_steps = x.shape[2]
 
         x = x.permute(0, 2, 1)
-        z = self.conformer_encoder_layer1(x)         #out: [B,T,12]
 
-        #down sample 2X
-        
-        z = self.conformer_encoder_layer2(z)         #out: [B,T,12]
-        z = self.conformer_encoder_layer3(z)      
-
+        z = self.conformer_encoder_layer1(x)          #out: [B,T,12]
         z = self.subsampling_layer1(z)                #out: [B,T//2,24]
+        z = self.conformer_encoder_layer2(z)          #out: [B,T//2,24]
+        z = self.subsampling_layer2(z)                #out: [B,T//4,48]
+        z = self.conformer_encoder_layer3(z)          #out: [B,T//4,48] 
 
-        #up sample 2X
-        
+        #bottleneck
 
-        z = self.conformer_decoder_layer1(z)          #out: [B,T//2,24] 
-
-        z = self.upsampling_layer1(z)                 #out: [B,T,12]  
-
-        z = self.conformer_decoder_layer2(z) 
-        z = self.conformer_decoder_layer3(z)
+        z = self.conformer_decoder_layer1(z)          #out: [B,T//4,48] 
+        z = self.upsampling_layer1(z)                 #out: [B,T//2,24] 
+        z = self.conformer_decoder_layer2(z)          #out: [B,T//2,24]  
+        z = self.upsampling_layer2(z)                 #out: [B,T,12]  
+        z = self.conformer_decoder_layer3(z)          #out: [B,T,12] 
 
         inp_hat = z
         inp_hat = inp_hat[:, :time_steps, :]
