@@ -310,9 +310,10 @@ def vis_kinematics_ema(model, **args):
 
     ema_ori, ema_hat = model(ema_data, None)
 
+
     ema_data_hat = ema_hat.cpu().detach().numpy()
 
-    draw_kinematics_ema(ema_data.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
+    draw_kinematics_ema(ema_ori.cpu(), ema_data_hat, mode='kinematics', title=ema_id+'ori_rec', **args) 
     
 def vis_kinematics_rtMRI(model, **args):
     ######################################
@@ -370,16 +371,11 @@ def draw_kinematics_ema(ema_data, ema_data_hat, mode, title, **args):
     
 
     ema_data = ema_data.squeeze(0)
-    if mode == 'kinematics':
-        ema_data_hat = ema_data_hat.squeeze(0)
+    ema_data_hat = ema_data_hat.squeeze(0)
     
     ema_id, wav_data, mel_data, text_trans = ema2info(**args)
     
-    ema_data = ema_data.T
-    #ema_data_hat = ema_data_hat.T
-    
-    print(ema_data.shape)
-    print(ema_data_hat.shape)
+    print(f"ema data shape is {ema_data.shape}, ema data hat shape is {ema_data_hat.shape}")
     
     x = np.arange(ema_data.shape[0])
 
@@ -393,11 +389,8 @@ def draw_kinematics_ema(ema_data, ema_data_hat, mode, title, **args):
         inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
         for j in range(2):
             ax = plt.Subplot(fig, inner[j])
-            _data = ema_data[:,i*2+j] #shape is (win_size,)
-            ax.plot(x, _data,c=colors[i], label='ori')
-            #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
-            if mode == 'kinematics':
-                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=10)
+            ax.plot(x, ema_data[:,i*2+j],c=colors[i], label='ori')
+            ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=4)
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)

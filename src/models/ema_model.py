@@ -27,7 +27,7 @@ class Conv2dSubsampling(torch.nn.Module):
         super().__init__()
         self.conv = torch.nn.Sequential(
             torch.nn.Conv2d(1, odim, 3, 2),
-            torch.nn.ReLU(),
+            # torch.nn.ReLU(),
         )
         self.out = torch.nn.Sequential(
             torch.nn.Linear(odim * ((idim // 2 - 1)), odim),
@@ -68,7 +68,7 @@ class Conv2dUpsampling(torch.nn.Module):
         super().__init__()
         self.conv = torch.nn.Sequential(
             torch.nn.ConvTranspose2d(1, odim, 3, 2,0,1),
-            torch.nn.ReLU(),
+            # torch.nn.ReLU(),
         )
         self.out = torch.nn.Sequential(
             torch.nn.Linear(odim * ((idim - 1)*2+1+1+2), odim),
@@ -124,26 +124,30 @@ class EMA_Model(nn.Module):
         #shape of x is [B,A,T]
         time_steps = x.shape[2]
 
+
         x = x.permute(0, 2, 1)
-        z1 = self.conformer_encoder_layer1(x)  #out: [B,T,12]
-        z2 = self.conformer_encoder_layer2(z1) #out: [B,T,12]
-        z3, _ = self.subsampling_layer1(z2, None)       #out: [B,T//2,12]
+        z = self.conformer_encoder_layer1(x)  #out: [B,T,12]
+        z = self.conformer_encoder_layer2(z) #out: [B,T,12]
+        # z, _ = self.subsampling_layer1(z, None)       #out: [B,T//2,12]
 
-        z4 = self.conformer_encoder_layer3(z3) #out: [B,T//2,12]
-        z5, _ = self.subsampling_layer1(z4, None)       #out: [B,T//4,12]
+        z = self.conformer_encoder_layer3(z) #out: [B,T//2,12]
+        # z, _ = self.subsampling_layer1(z, None)       #out: [B,T//4,12]
 
-        z6 = self.conformer_decoder_layer1(z5) #out: [B, T//4, 12]
-        z7,_ = self.upsampling_layer1(z6, None)        #out: [B, T//2, 12]
+        z = self.conformer_decoder_layer1(z) #out: [B, T//4, 12]
+        # z,_ = self.upsampling_layer1(z, None)        #out: [B, T//2, 12]
 
-        z8 = self.conformer_decoder_layer2(z7) #out: [B, T//2, 12]
-        z9,_ = self.upsampling_layer2(z8, None)        #out: [B, T, 12]
+        z = self.conformer_decoder_layer2(z) #out: [B, T//2, 12]
+        # z,_ = self.upsampling_layer2(z, None)        #out: [B, T, 12]
 
-        z10 = self.conformer_decoder_layer3(z9)#out: [B, T, 12]
+        z = self.conformer_decoder_layer3(z)#out: [B, T, 12]
 
-        inp_hat = z10
+        inp_hat = z
 
 
         inp_hat = inp_hat[:, :time_steps, :]
+
+        # print(f"max of ema inp is {torch.max(x)}, min of ema inp is {torch.min(x)}")
+        # print(f"max of ema hat is {torch.max(inp_hat)}, min of ema hat is {torch.min(inp_hat)}")
         return x, inp_hat
 
     def loadParameters(self, path):

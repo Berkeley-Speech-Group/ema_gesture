@@ -191,10 +191,8 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
                 
             loss = args['rec_factor']*rec_loss
 
-
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
-            #print(model.vq_model._embedding.weight)
             optimizer.step()
 
             sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f" %(rec_loss.item(), 0, 0, 0, 0))
