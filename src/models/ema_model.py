@@ -86,6 +86,8 @@ class EMA_Model(nn.Module):
         self.sparse_t_base = args['sparse_t_base']
         self.fixed_length = args['fixed_length']
 
+
+        #####-----------------------------------------
         #This is for AE Reconstruction
         self.conformer_encoder_layer1 = ConformerLayer(hid_dim=12, n_head=4, filter_size=5, dropout=0.1)
         self.conformer_encoder_layer2 = ConformerLayer(hid_dim=24, n_head=4, filter_size=3, dropout=0.1)
@@ -102,10 +104,33 @@ class EMA_Model(nn.Module):
         self.conformer_decoder_layer2 = ConformerLayer(hid_dim=24, n_head=4, filter_size=5, dropout=0.1)
         self.conformer_decoder_layer3 = ConformerLayer(hid_dim=12, n_head=4, filter_size=5, dropout=0.1)
 
+        #####-----------------------------------------
         #This is for Gestures Modeling (a codebook)
-        self.gestures = torch.randn(40, 41, 12) # [B', T_win, 12]
+        self.gestures = torch.randn(self.num_gestures, self.win_size, self.num_pellets) # [B'(num_gestures), T_win(window size), 12]
 
+       
+        #####-----------------------------------------
         #this is for Gestural Score Modeling
+        self.gs_encoder1 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=15,padding=7) #larger is better
+        self.gs_encoder2 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1) #smaller is better
+        self.gs_encoder3 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_pellets,kernel_size=3,padding=1)
+        self.gs_encoder4 = nn.Conv1d(in_channels=self.num_pellets,out_channels=self.num_gestures,kernel_size=3,padding=1)
+
+        self.gs_conformer_encoder_layer1 = ConformerLayer(hid_dim=self.num_gestures, n_head=4, filter_size=5, dropout=0.1)
+        self.gs_conformer_encoder_layer2 = ConformerLayer(hid_dim=2*self.num_gestures, n_head=4, filter_size=3, dropout=0.1)
+        self.gs_conformer_encoder_layer3 = ConformerLayer(hid_dim=4*self.num_gestures, n_head=4, filter_size=3, dropout=0.1)
+        self.gs_conformer_encoder_layer4 = ConformerLayer(hid_dim=self.num_gestures, n_head=4, filter_size=3, dropout=0.1)
+
+        self.gs_subsampling_layer1 = ConcatSubsampling(idim=self.num_gestures, odim=self.num_gestures, dropout_rate=0.1) #down sampling by 2X       
+        self.gs_subsampling_layer2 = ConcatSubsampling(idim=2*self.num_gestures, odim=self.num_gestures, dropout_rate=0.1) #down sampling by 2X
+
+        self.gs_upsampling_layer1 = ConcatUpsampling(idim=4*self.num_gestures, odim=self.num_gestures, dropout_rate=0.1) #up sampling by 2X
+        self.gs_upsampling_layer2 = ConcatUpsampling(idim=2*self.num_gestures, odim=self.num_gestures, dropout_rate=0.1) #up sampling by 2X
+
+        self.gs_conformer_decoder_layer1 = ConformerLayer(hid_dim=4*self.num_gestures, n_head=4, filter_size=5, dropout=0.1)
+        self.gs_conformer_decoder_layer2 = ConformerLayer(hid_dim=2*self.num_gestures, n_head=4, filter_size=5, dropout=0.1)
+        self.gs_conformer_decoder_layer3 = ConformerLayer(hid_dim=self.num_gestures, n_head=4, filter_size=5, dropout=0.1)
+
 
 
 
@@ -113,7 +138,7 @@ class EMA_Model(nn.Module):
         #shape of x is [B,A,T]
         time_steps = x.shape[2]
 
-        x = x.permute(0, 2, 1)
+        x = x.permute(0, 2, 1)                         # [B, T, 12]
 
         z1 = self.conformer_encoder_layer1(x)          #out: [B,T,12]
         z = self.subsampling_layer1(z1)                #out: [B,T//2,24]
@@ -146,7 +171,31 @@ class EMA_Model(nn.Module):
         g = self.upsampling_layer1(g)                 #out: [B,T//2,24] 
         g4 = self.conformer_decoder_layer2(g)          #out: [B,T//2,24]  
         g = self.upsampling_layer2(g4)                 #out: [B,T,12]  
-        g5 = self.conformer_decoder_layer3(g)          #out: [B,T,12]         
+        g5 = self.conformer_decoder_layer3(g)          #out: [B,T,12] 
+
+
+        #####-----------------------------------------
+        #Gestural Score Modeling
+
+        #shape is [B, T, num_gestures]
+        H = F.relu(self.gs_encoder1(x.transpose(1,2)))        #out: [B, 12, T]
+        H = F.relu(self.gs_encoder2(x.transpose(1,2)))        #out: [B, 12, T]
+        H = F.relu(self.gs_encoder3(x.transpose(1,2)))        #out: [B, 12, T]
+        H = F.relu(self.gs_encoder4(x.transpose(1,2)))        #out: [B, num_gestures, T]
+
+        H = H.transpose(1,2)
+
+        h1 = self.gs_conformer_encoder_layer1(H)          #out: [B,T,num_gestures]
+        h = self.gs_subsampling_layer1(h1)                #out: [B,T//2,num_gestures]
+        h2 = self.gs_conformer_encoder_layer2(h)          #out: [B,T//2,2*num_gestures]
+        h = self.gs_subsampling_layer2(h2)                #out: [B,T//4,4*num_gestures]
+        h3 = self.gs_conformer_encoder_layer3(h)          #out: [B,T//4,4*num_gestures] 
+
+        h = self.gs_conformer_decoder_layer1(h3)          #out: [B,T//4,4*num_gestures] 
+        h = self.gs_upsampling_layer1(h)                 #out: [B,T//2,2*num_gestures] 
+        h4 = self.gs_conformer_decoder_layer2(h)          #out: [B,T//2,2*num_gestures]  
+        h = self.gs_upsampling_layer2(h4)                 #out: [B,T,num_gestures]  
+        h5 = self.gs_conformer_decoder_layer3(h)          #out: [B,T,num_gestures] 
 
 
         return x, inp_hat
