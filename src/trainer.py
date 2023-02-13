@@ -51,7 +51,7 @@ def eval_resynthesis_ema(model, ema_dataloader_test, device, **args):
 
         model.eval()
 
-        inp, inp_hat= model(ema_batch, None)
+        inp, inp_hat, (h1,h2,h3,h4,h5), (z1,z2,z3,z4,z5), (z1_hat,z5_hat), sparsity_c, sparsity_t, entropy_c, entropy_t = model(ema_batch, None)
             
         rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
         rec_loss_e.append(rec_loss.item())
@@ -185,7 +185,7 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
             model.train()
             optimizer.zero_grad()
 
-            inp, inp_hat = model(ema_batch, None)
+            inp, inp_hat, (h1,h2,h3,h4,h5), (z1,z2,z3,z4,z5), (z1_hat,z5_hat), sparsity_c, sparsity_t, entropy_c, entropy_t = model(ema_batch, None)
 
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
                 

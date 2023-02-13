@@ -206,12 +206,12 @@ class EMA_Model(nn.Module):
         # g1: [12, num_gestures, win_size]
         # z1: [B, 12, T]
 
-        # for z2 and h2
+        # for z2 and h2 (Not feasible right now)
         # h2: [B,    2*num_gestures, T//2]
         # g2: [12*2, num_gestures,   win_size//2]
         # z2: [B, 12*2, T//2] 
 
-        # for z3 and h3
+        # for z3 and h3 (Not feasible right now)
         # h3: [B,    4*num_gestures, 4//2]
         # g3: [12*4, num_gestures,   win_size//4]
         # z3: [B, 12*4, T//4]  
@@ -220,8 +220,13 @@ class EMA_Model(nn.Module):
         g5 = g1[:, :g1.shape[1], :]
         z5_hat = F.conv1d(h5.transpose(1,2), g5.permute(2,0,1).flip(2), padding=(self.win_size-1)//2) #[B, 12, T]
 
+        #sparsity for h1
+        sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(h1.transpose(1,2))
+        sparsity_c = sparsity_c.mean() #[B, T] -> [B]
+        sparsity_t = sparsity_t.mean() #[B, D] -> [B]
 
-        return x, inp_hat
+
+        return x, inp_hat, (h1,h2,h3,h4,h5), (z1,z2,z3,z4,z5), (z1_hat,z5_hat), sparsity_c, sparsity_t, entropy_c, entropy_t
 
     def loadParameters(self, path):
         self_state = self.state_dict()

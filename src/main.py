@@ -108,7 +108,7 @@ if __name__ == "__main__":
     if args.vis_gestures:
         print("###################################Visualize Gestures#########################################")
         # os.system("sudo rm -rf *.png")
-        # vis_H(model, **vars(args))
+        vis_H(model, **vars(args))
         if args.dataset == 'ema':
             vis_kinematics_ema(model, **vars(args))
             # vis_gestures_ema(model, **vars(args))

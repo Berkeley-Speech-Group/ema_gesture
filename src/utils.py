@@ -255,18 +255,16 @@ def vis_H(model, **args):
     ema_data = ema_data.transpose(-1, -2)
     
     
-    if args['pr_joint']:
-        ema_ori, ema_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c, log_p_out, p_out, out_lens  = model(ema_data, ema_len_batch)
-    else:
-        ema_ori, ema_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c = model(ema_data, None)
+    ema_ori, ema_hat, (h1,h2,h3,h4,h5), (z1,z2,z3,z4,z5), (z1_hat,z5_hat), sparsity_c, sparsity_t, entropy_c, entropy_t = model(ema_data, None)
 
-    latent_H = latent_H.squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
+
+    latent_H_1 = h1.transpose(1,2).squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
+    latent_H_5 = h5.transpose(1,2).squeeze().squeeze().cpu().detach().numpy() #[num_gesturs, t]
     
-    #latent_H = latent_H[:,:latent_H.shape[1]//6]
     
     plt.figure(figsize=(20,15)) 
     ax = plt.gca()
-    im = ax.imshow(latent_H, cmap='Blues', interpolation='nearest', aspect=2)
+    im = ax.imshow(latent_H_1, cmap='Blues', interpolation='nearest', aspect=2)
     divider = make_axes_locatable(ax)
 #     cax = divider.append_axes("right", size="2%", pad=-4.7)
 #     cbar = plt.colorbar(im, cax=cax)
@@ -276,18 +274,46 @@ def vis_H(model, **args):
     ax.set_yticks([])
     #plt.title(text_trans, fontsize=30)
     #plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"), bbox_inches='tight')
-    plt.savefig('/home/jiachenlian/ema_gesture/latent_H'+"_"+".png", bbox_inches='tight')
+    plt.savefig('/home/jiachenlian/ema_gesture/latent_H_1'+"_"+".png", bbox_inches='tight')
     plt.clf()
 
     #we try to print rows that are "activated"
-    _, sparsity_t, entropy_t,_ = get_sparsity(torch.from_numpy(latent_H).unsqueeze(0).unsqueeze(0))
+    _, sparsity_t, entropy_t,_ = get_sparsity(torch.from_numpy(latent_H_1).unsqueeze(0).unsqueeze(0))
     #print(sparsity_t.shape) #[1, 40] 
     sparse_indices = []
     for i in range(sparsity_t.shape[1]):
-        print(sparsity_t[0][i])
+        # print(sparsity_t[0][i])
         if sparsity_t[0][i] < 0.80:
             sparse_indices.append(i)
-    print("sparse gesture indices", sparse_indices)
+    # print("sparse gesture indices", sparse_indices)
+
+
+    #########h5
+
+    plt.figure(figsize=(20,15)) 
+    ax = plt.gca()
+    im = ax.imshow(latent_H_5, cmap='Blues', interpolation='nearest', aspect=2)
+    divider = make_axes_locatable(ax)
+#     cax = divider.append_axes("right", size="2%", pad=-4.7)
+#     cbar = plt.colorbar(im, cax=cax)
+#     #cbar.ax.tick_params(labelsize=40)
+#     cbar.set_ticks([])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    #plt.title(text_trans, fontsize=30)
+    #plt.savefig(os.path.join(args['save_path'], 'latent_H'+"_"+".png"), bbox_inches='tight')
+    plt.savefig('/home/jiachenlian/ema_gesture/latent_H_5'+"_"+".png", bbox_inches='tight')
+    plt.clf()
+
+    #we try to print rows that are "activated"
+    _, sparsity_t, entropy_t,_ = get_sparsity(torch.from_numpy(latent_H_5).unsqueeze(0).unsqueeze(0))
+    #print(sparsity_t.shape) #[1, 40] 
+    sparse_indices = []
+    for i in range(sparsity_t.shape[1]):
+        # print(sparsity_t[0][i])
+        if sparsity_t[0][i] < 0.80:
+            sparse_indices.append(i)
+    # print("sparse gesture indices", sparse_indices)
 
 
 def vis_kinematics_ema(model, **args):
@@ -308,7 +334,7 @@ def vis_kinematics_ema(model, **args):
     
     ema_data = ema_data.transpose(-1, -2)
 
-    ema_ori, ema_hat = model(ema_data, None)
+    ema_ori, ema_hat, (h1,h2,h3,h4,h5), (z1,z2,z3,z4,z5), (z1_hat,z5_hat), sparsity_c, sparsity_t, entropy_c, entropy_t = model(ema_data, None)
 
 
     ema_data_hat = ema_hat.cpu().detach().numpy()
