@@ -13,83 +13,6 @@ from utils import get_sparsity
 from conformer_encoder import ConformerLayer, PositionalEncoding
 
 
-class Conv2dSubsampling(torch.nn.Module):
-    """Convolutional 2D subsampling (to 1/4 length).
-    Args:
-        idim (int): Input dimension.
-        odim (int): Output dimension.
-        dropout_rate (float): Dropout rate.
-        pos_enc (torch.nn.Module): Custom position encoding layer.
-    """
-
-    def __init__(self, idim, odim, dropout_rate, pos_enc=None):
-        """Construct an Conv2dSubsampling object."""
-        super().__init__()
-        self.conv = torch.nn.Sequential(
-            torch.nn.Conv2d(1, odim, 3, 2),
-            # torch.nn.ReLU(),
-        )
-        self.out = torch.nn.Sequential(
-            torch.nn.Linear(odim * ((idim // 2 - 1)), odim),
-            # pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate),
-        )
-
-    def forward(self, x, x_mask):
-        """Subsample x.
-        Args:
-            x (torch.Tensor): Input tensor (#batch, time, idim).
-            x_mask (torch.Tensor): Input mask (#batch, 1, time).
-        Returns:
-            torch.Tensor: Subsampled tensor (#batch, time', odim),
-                where time' = time // 4.
-            torch.Tensor: Subsampled mask (#batch, 1, time'),
-                where time' = time // 4.
-        """
-        x = x.unsqueeze(1)  # (b, 1, t, in_d)
-        x = self.conv(x)    # (b, out_d, t//2, in_d//2)
-        b, c, t, f = x.size()
-        x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f)) # (b, t//2, out_d*ind_d//2) -> (b, t//2, out_d)
-        if x_mask is None:
-            return x, None
-        return x, x_mask[:, :, :-2:2][:, :, :-2:2]
-
-
-class Conv2dUpsampling(torch.nn.Module):
-    """Convolutional 2D subsampling (to 1/4 length).
-    Args:
-        idim (int): Input dimension.
-        odim (int): Output dimension.
-        dropout_rate (float): Dropout rate.
-        pos_enc (torch.nn.Module): Custom position encoding layer.
-    """
-
-    def __init__(self, idim, odim, dropout_rate, pos_enc=None):
-        """Construct an Conv2dSubsampling object."""
-        super().__init__()
-        self.conv = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(1, odim, 3, 2,0,1),
-            # torch.nn.ReLU(),
-        )
-        self.out = torch.nn.Sequential(
-            torch.nn.Linear(odim * ((idim - 1)*2+1+1+2), odim),
-            # pos_enc if pos_enc is not None else PositionalEncoding(odim, dropout_rate),
-        )
-
-    def forward(self, x, x_mask):
-        """Subsample x.
-        Args:
-            x (torch.Tensor): Input tensor (#batch, time, idim).
-            x_mask (torch.Tensor): Input mask (#batch, 1, time).
-        """
-        x = x.unsqueeze(1)  # (b, 1, t, in_d)
-        x = self.conv(x)    # (b, out_d, t*2, in_d*2)
-        b, c, t, f = x.size()
-        x = self.out(x.transpose(1, 2).contiguous().view(b, t, c * f)) # (b, t*2, out_d*ind_d*2) -> (b, t*2, out_d)
-        if x_mask is None:
-            return x, None
-        return x, x_mask[:, :, :-2:2][:, :, :-2:2]
-
-
 class ConcatSubsampling(torch.nn.Module):
     """Convolutional 2D subsampling (to 1/4 length).
     Args:
@@ -103,7 +26,6 @@ class ConcatSubsampling(torch.nn.Module):
         """Construct an Conv2dSubsampling object."""
         super().__init__()
         self.idim = idim
-        self.proj = nn.Linear(idim*2, odim)
 
     def forward(self, x):
         """Subsample x.
@@ -118,8 +40,6 @@ class ConcatSubsampling(torch.nn.Module):
             x = torch.cat((x, zero_vector), dim=1)
         T = x.shape[1]
         x = x.reshape(B, T//2, -1)
-
-        # x = self.proj(x)
 
         return x
 
@@ -136,7 +56,6 @@ class ConcatUpsampling(torch.nn.Module):
         """Construct an Conv2dSubsampling object."""
         super().__init__()
         self.idim = idim
-        self.proj = nn.Linear(idim//2, odim)
 
     def forward(self, x):
         """Subsample x.
@@ -151,8 +70,6 @@ class ConcatUpsampling(torch.nn.Module):
             x = torch.cat((x, zero_vector), dim=1)
         T = x.shape[1]
         x = x.reshape(B, T*2, -1)
-
-        # x = self.proj(x)
 
         return x
 
@@ -169,7 +86,7 @@ class EMA_Model(nn.Module):
         self.sparse_t_base = args['sparse_t_base']
         self.fixed_length = args['fixed_length']
 
-        #hidden_dim should be equal to num of pellets
+        #This is for AE Reconstruction
         self.conformer_encoder_layer1 = ConformerLayer(hid_dim=12, n_head=4, filter_size=5, dropout=0.1)
         self.conformer_encoder_layer2 = ConformerLayer(hid_dim=24, n_head=4, filter_size=3, dropout=0.1)
         self.conformer_encoder_layer3 = ConformerLayer(hid_dim=48, n_head=4, filter_size=3, dropout=0.1)
@@ -185,31 +102,53 @@ class EMA_Model(nn.Module):
         self.conformer_decoder_layer2 = ConformerLayer(hid_dim=24, n_head=4, filter_size=5, dropout=0.1)
         self.conformer_decoder_layer3 = ConformerLayer(hid_dim=12, n_head=4, filter_size=5, dropout=0.1)
 
+        #This is for Gestures Modeling (a codebook)
+        self.gestures = torch.randn(40, 41, 12) # [B', T_win, 12]
+
+        #this is for Gestural Score Modeling
+
+
+
     def forward(self, x, ema_inp_lens):
         #shape of x is [B,A,T]
         time_steps = x.shape[2]
 
         x = x.permute(0, 2, 1)
 
-        z = self.conformer_encoder_layer1(x)          #out: [B,T,12]
-        z = self.subsampling_layer1(z)                #out: [B,T//2,24]
-        z = self.conformer_encoder_layer2(z)          #out: [B,T//2,24]
-        z = self.subsampling_layer2(z)                #out: [B,T//4,48]
-        z = self.conformer_encoder_layer3(z)          #out: [B,T//4,48] 
+        z1 = self.conformer_encoder_layer1(x)          #out: [B,T,12]
+        z = self.subsampling_layer1(z1)                #out: [B,T//2,24]
+        z2 = self.conformer_encoder_layer2(z)          #out: [B,T//2,24]
+        z = self.subsampling_layer2(z2)                #out: [B,T//4,48]
+        z3 = self.conformer_encoder_layer3(z)          #out: [B,T//4,48] 
 
         #bottleneck
 
-        z = self.conformer_decoder_layer1(z)          #out: [B,T//4,48] 
+        z = self.conformer_decoder_layer1(z3)          #out: [B,T//4,48] 
         z = self.upsampling_layer1(z)                 #out: [B,T//2,24] 
-        z = self.conformer_decoder_layer2(z)          #out: [B,T//2,24]  
-        z = self.upsampling_layer2(z)                 #out: [B,T,12]  
-        z = self.conformer_decoder_layer3(z)          #out: [B,T,12] 
+        z4 = self.conformer_decoder_layer2(z)          #out: [B,T//2,24]  
+        z = self.upsampling_layer2(z4)                 #out: [B,T,12]  
+        z5 = self.conformer_decoder_layer3(z)          #out: [B,T,12] 
 
-        inp_hat = z
+        inp_hat = z5
         inp_hat = inp_hat[:, :time_steps, :]
 
-        # print(f"max of ema inp is {torch.max(x)}, min of ema inp is {torch.min(x)}")
-        # print(f"max of ema hat is {torch.max(inp_hat)}, min of ema hat is {torch.min(inp_hat)}")
+
+        #####-----------------------------------------
+        #Gestures Modeling
+
+        g1 = self.conformer_encoder_layer1(self.gestures)          #out: [B,T,12]
+        g = self.subsampling_layer1(g1)                #out: [B,T//2,24]
+        g2 = self.conformer_encoder_layer2(g)          #out: [B,T//2,24]
+        g = self.subsampling_layer2(g2)                #out: [B,T//4,48]
+        g3 = self.conformer_encoder_layer3(g)          #out: [B,T//4,48] 
+
+        g = self.conformer_decoder_layer1(g3)          #out: [B,T//4,48] 
+        g = self.upsampling_layer1(g)                 #out: [B,T//2,24] 
+        g4 = self.conformer_decoder_layer2(g)          #out: [B,T//2,24]  
+        g = self.upsampling_layer2(g4)                 #out: [B,T,12]  
+        g5 = self.conformer_decoder_layer3(g)          #out: [B,T,12]         
+
+
         return x, inp_hat
 
     def loadParameters(self, path):
