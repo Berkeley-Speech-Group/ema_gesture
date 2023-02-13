@@ -198,6 +198,29 @@ class EMA_Model(nn.Module):
         h5 = self.gs_conformer_decoder_layer3(h)          #out: [B,T,num_gestures] 
 
 
+        #####-----------------------------------------
+        #######CSNMF
+
+        # for z1 and h1
+        # h1: [B,  num_gestures, T]
+        # g1: [12, num_gestures, win_size]
+        # z1: [B, 12, T]
+
+        # for z2 and h2
+        # h2: [B,    2*num_gestures, T//2]
+        # g2: [12*2, num_gestures,   win_size//2]
+        # z2: [B, 12*2, T//2] 
+
+        # for z3 and h3
+        # h3: [B,    4*num_gestures, 4//2]
+        # g3: [12*4, num_gestures,   win_size//4]
+        # z3: [B, 12*4, T//4]  
+
+        z1_hat = F.conv1d(h1.transpose(1,2), g1.permute(2,0,1).flip(2), padding=(self.win_size-1)//2) #[B, 12, T]
+        g5 = g1[:, :g1.shape[1], :]
+        z5_hat = F.conv1d(h5.transpose(1,2), g5.permute(2,0,1).flip(2), padding=(self.win_size-1)//2) #[B, 12, T]
+
+
         return x, inp_hat
 
     def loadParameters(self, path):
