@@ -106,7 +106,18 @@ class EMA_Model(nn.Module):
 
         #####-----------------------------------------
         #This is for Gestures Modeling (a codebook)
-        self.gestures = torch.randn(self.num_gestures, self.win_size, self.num_pellets) # [B'(num_gestures), T_win(window size), 12]
+        ######Apply weights of k-means to gestures
+        if self.num_gestures == 20:
+            kmeans_centers = torch.from_numpy(np.load('/data/jiachenlian/data_nsf/kmeans_pretrain/kmeans_centers_20.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 40:
+            kmeans_centers = torch.from_numpy(np.load('/data/jiachenlian/data_nsf/kmeans_pretrain/kmeans_centers_40.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 60:
+            kmeans_centers = torch.from_numpy(np.load('/data/jiachenlian/data_nsf/kmeans_pretrain/kmeans_centers_60.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 80:
+            kmeans_centers = torch.from_numpy(np.load('/data/jiachenlian/data_nsf/kmeans_pretrain/kmeans_centers_80.npy')) #[40, 12*41=492]
+        kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
+
+        self.gestures = kmeans_centers.transpose(1,2) # [B'(num_gestures), T_win(window size), 12]
         self.g1 = None
         self.g5 = None
 
@@ -224,10 +235,11 @@ class EMA_Model(nn.Module):
 
         z1_hat = F.conv1d(h1.transpose(1,2), g1.permute(2,0,1).flip(2), padding=(self.win_size-1)//2) #[B, 12, T]
         g5 = g1[:, :g1.shape[1], :]
-        z5_hat = F.conv1d(h5.transpose(1,2), g5.permute(2,0,1).flip(2), padding=(self.win_size-1)//2) #[B, 12, T]
+        # z5_hat = F.conv1d(h5.transpose(1,2), g5.permute(2,0,1).flip(2), padding=(self.win_size-1)//2) #[B, 12, T]
+        z5_hat = F.conv1d(h5.transpose(1,2), self.gestures.permute(2,0,1).flip(2), padding=(self.win_size-1)//2) #[B, 12, T]
 
         #sparsity for h1
-        sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(h1.transpose(1,2))
+        sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(h5.transpose(1,2))
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
 

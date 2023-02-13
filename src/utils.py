@@ -874,8 +874,8 @@ def draw_3d_ieee(ema_data, ema_data_hat, mode, title, **args):
     
     
 def vis_gestures_ema(model, **args):
-     #[num_pellets, 1, num_gestures, win_size]
-    gestures = model.g1.permute(2, 0, 1).unsqueeze(1)
+     
+    gestures = model.gestures.permute(2, 0, 1).unsqueeze(1) #[num_pellets, 1, num_gestures, win_size]
     print(f"gesture shape: {gestures.shape}")
     
     ema_id, wav_path, mel_data, text_trans = ema2info(**args)

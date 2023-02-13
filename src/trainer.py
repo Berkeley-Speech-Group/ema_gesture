@@ -194,6 +194,13 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
                 
             loss = args['rec_factor']*rec_loss + args['rec_factor1']*rec_z1_loss + args['rec_factor5']*rec_z5_loss 
 
+            if args['sparse_c']:
+                #loss += -args['sparse_c_factor']*sparsity_c
+                loss += args['sparse_c_factor']*(sparsity_c-args['sparse_c_base'])**2
+            if args['sparse_t']:
+                #loss += -args['sparse_t_factor']*sparsity_t
+                loss += args['sparse_t_factor']*(sparsity_t-args['sparse_t_base'])**2            
+
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
             optimizer.step()
