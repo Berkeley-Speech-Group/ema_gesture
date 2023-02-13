@@ -582,7 +582,7 @@ def draw_2d_ema(ema_data, ema_data_hat, mode, title, **args):
     plt.title(title,fontdict = {'fontsize' : 50})
 
     #plt.savefig(os.path.join(args['save_path'], title+"_2d_"+".png"))
-    plt.savefig("/home/jiachenlian/ema_gesture/"+title+"_2d"+".png")
+    plt.savefig("/home/jiachenlian/ema_gesture/gestures/"+title+"_2d"+".png")
 
     plt.clf()
     
@@ -874,20 +874,13 @@ def draw_3d_ieee(ema_data, ema_data_hat, mode, title, **args):
     
     
 def vis_gestures_ema(model, **args):
-    #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
-    if args['vq_resynthesis']:
-        gestures = model.vq_model._embedding.weight.reshape(args['num_gestures'], args['num_pellets'], args['win_size']).permute(1,0,2).unsqueeze(1)
-    else:
-        gestures = model.gesture_weight.unsqueeze(1)
-        
-    print(gestures.shape)
+     #[num_pellets, 1, num_gestures, win_size]
+    gestures = model.g1.permute(2, 0, 1).unsqueeze(1)
+    print(f"gesture shape: {gestures.shape}")
     
     ema_id, wav_path, mel_data, text_trans = ema2info(**args)
-    #draw_mel_ema(mels=mel_data, mode=ema_id, title=text_trans)
-    #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)
     for i in range(args['num_gestures']):
         gesture_index = i
-        #draw_kinematics_ema(gestures[:,0,gesture_index,:].unsqueeze(0).cpu().detach().numpy(), None, mode='gesture', title='Gesture '+str(gesture_index), **args)
         draw_2d_ema(gestures[:,0,gesture_index,:].transpose(0,1).cpu().detach().numpy(), None, mode='gesture', title='Gesture'+str(gesture_index), **args)
 
     

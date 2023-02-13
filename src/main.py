@@ -50,6 +50,8 @@ parser.add_argument('--sparse_t', action='store_true', help='')
 parser.add_argument('--entropy_t', action='store_true', help='')
 parser.add_argument('--entropy_c', action='store_true', help='')
 parser.add_argument('--rec_factor',type=float, default=1, help='')
+parser.add_argument('--rec_factor1',type=float, default=1, help='')
+parser.add_argument('--rec_factor5',type=float, default=1, help='')
 parser.add_argument('--sparse_c_factor',type=float, default=1e-3, help='')
 parser.add_argument('--sparse_t_factor',type=float, default=1e-4, help='')
 parser.add_argument('--entropy_t_factor',type=float, default=1, help='')
@@ -111,7 +113,7 @@ if __name__ == "__main__":
         vis_H(model, **vars(args))
         if args.dataset == 'ema':
             vis_kinematics_ema(model, **vars(args))
-            # vis_gestures_ema(model, **vars(args))
+            vis_gestures_ema(model, **vars(args))
         exit()
         
     if args.dataset == 'ema':

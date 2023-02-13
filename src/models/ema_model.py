@@ -107,6 +107,8 @@ class EMA_Model(nn.Module):
         #####-----------------------------------------
         #This is for Gestures Modeling (a codebook)
         self.gestures = torch.randn(self.num_gestures, self.win_size, self.num_pellets) # [B'(num_gestures), T_win(window size), 12]
+        self.g1 = None
+        self.g5 = None
 
        
         #####-----------------------------------------
@@ -172,6 +174,10 @@ class EMA_Model(nn.Module):
         g4 = self.conformer_decoder_layer2(g)          #out: [B,T//2,24]  
         g = self.upsampling_layer2(g4)                 #out: [B,T,12]  
         g5 = self.conformer_decoder_layer3(g)          #out: [B,T,12] 
+
+
+        self.g1 = g1
+        self.g5 = g5
 
 
         #####-----------------------------------------

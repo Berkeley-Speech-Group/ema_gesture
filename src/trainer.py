@@ -188,14 +188,17 @@ def trainer_resynthesis_ema(model, optimizer, lr_scheduler, ema_dataloader_train
             inp, inp_hat, (h1,h2,h3,h4,h5), (z1,z2,z3,z4,z5), (z1_hat,z5_hat), sparsity_c, sparsity_t, entropy_c, entropy_t = model(ema_batch, None)
 
             rec_loss = F.l1_loss(inp, inp_hat, reduction='mean')
+
+            rec_z1_loss = F.l1_loss(z1, z1_hat.transpose(1,2), reduction='mean') 
+            rec_z5_loss = F.l1_loss(z5, z5_hat.transpose(1,2), reduction='mean') 
                 
-            loss = args['rec_factor']*rec_loss
+            loss = args['rec_factor']*rec_loss + args['rec_factor1']*rec_z1_loss + args['rec_factor5']*rec_z5_loss 
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
             optimizer.step()
 
-            sys.stdout.write(" rec_loss=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f" %(rec_loss.item(), 0, 0, 0, 0))
+            sys.stdout.write(" rec_loss=%.4f, rec_1=%.4f, rec_5=%.4f, sparsity_c=%.4f, sparsity_t=%.4f, entropy_t=%.4f, entropy_c=%.4f" %(rec_loss.item(), rec_z1_loss.item(), rec_z5_loss.item(), sparsity_c, sparsity_t, 0, 0))
 
             rec_loss_e.append(rec_loss.item())
             writer.add_scalar('Rec_Loss_train', rec_loss.item(), count)
