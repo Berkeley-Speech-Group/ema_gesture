@@ -76,7 +76,7 @@ def pySTFT(x, fft_length=1024, hop_length=256):
 
 def wav2mel(wav):
     #input size of wav should be [1, length]
-    mel_basis = mel(16000, 1024, fmin=90, fmax=7600, n_mels=80).T
+    mel_basis = mel(sr=16000, n_fft=1024, fmin=90, fmax=7600, n_mels=80).T
     min_level = np.exp(-100 / 20 * np.log(10))
     b, a = butter_highpass(30, 16000, order=5)
 
@@ -273,9 +273,9 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
             ax = plt.Subplot(fig, inner[j])
             _data = ema_data[:,i*2+j] #shape is (win_size,)
             #ax.plot(x, _data,c=colors[i], linestyle='dashed', label='ori')
-            #ax.plot(x, _data,c=colors[i], label='ori', linewidth=10)
+            ax.plot(x, _data,c=colors[i], label='ori', linewidth=3)
             if mode == 'kinematics':
-                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=10)
+                ax.plot(x, ema_data_hat[:,i*2+j],c=colors[i], label='rec', linestyle='dashed', linewidth=3)
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
@@ -291,6 +291,7 @@ def draw_kinematics(ema_data, ema_data_hat, mode, title, **args):
                 ax.set_ylabel(labels[i]+' y',rotation=0,fontsize=20, labelpad=10)
             ax.yaxis.set_label_coords(-0.05,0.5)
     plt.savefig(os.path.join(args['save_path'], title+"_"+".png"))
+    
     plt.clf()
     
 
@@ -360,21 +361,29 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
     
     len_data = len(data_x_1)
     
-#     plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=4)
-#     plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=10)
-#     plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=4)
-#     plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=10)
-#     plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=4)
-#     plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=10)
+
+    
+    plt.plot(data_x_1[:len_data//2+5], data_y_1[:len_data//2+5], color='red', linewidth=4)
+    plt.plot(data_x_1[len_data//2:], data_y_1[len_data//2:], label='tongue dorsum', color='red', linewidth=10)
+    plt.plot(data_x_2[:len_data//2+5], data_y_2[:len_data//2+5], color='blue', linewidth=4)
+    plt.plot(data_x_2[len_data//2:], data_y_2[len_data//2:], label='tongue blade', color='blue', linewidth=10)
+    plt.plot(data_x_3[:len_data//2+5], data_y_3[:len_data//2+5], color='black', linewidth=4)
+    plt.plot(data_x_3[len_data//2:], data_y_3[len_data//2:], label='tongue tip', color='black', linewidth=10)
     plt.plot(data_x_4[:len_data//2+5], data_y_4[:len_data//2+5], color='orange', linewidth=4)
     plt.plot(data_x_4[len_data//2:], data_y_4[len_data//2:], label='tongue incisor', color='orange', linewidth=10)
-#     plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=4)
-#     plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=10)
+    plt.plot(data_x_5[:len_data//2+5], data_y_5[:len_data//2+5], color='purple', linewidth=4)
+    plt.plot(data_x_5[len_data//2:], data_y_5[len_data//2:], label='tongue upper lip', color='purple', linewidth=10)
     plt.plot(data_x_6[:len_data//2+5], data_y_6[:len_data//2+5], color='grey', linewidth=4)
     plt.plot(data_x_6[len_data//2:], data_y_6[len_data//2:], label='tongue lower lip', color='grey', linewidth=10)
 
     #plt.xticks(fontsize=50)
     #plt.yticks(fontsize=50)
+#     plt.text(means[0], means[1], "TD")
+#     plt.text(means[2], means[3], "TB")
+#     plt.text(means[4], means[5], "TT")
+#     plt.text(means[6], means[7], "LI")
+#     plt.text(means[8], means[9], "UL")
+#     plt.text(means[10], means[11], "LL")
     plt.xticks([])
     plt.yticks([])
     #plt.legend(prop={'size': 50})
@@ -384,7 +393,8 @@ def draw_2d(ema_data, ema_data_hat, mode, title, **args):
 
 def vis_gestures(model, **args):
     #gestures = model.conv_decoder.weight #[num_pellets, 1, num_gestures, win_size]
-    gestures = model.gesture_weight.unsqueeze(1)
+#     gestures = model.gesture_weight.unsqueeze(1) * 10
+    gestures = model.gesture_weight_before.unsqueeze(1) 
     ema_id, wav_path, mel_data, text_trans = ema2info(**args)
     draw_mel(mels=mel_data, mode=ema_id, title=text_trans)
     #draw_mel2(wav=wav_path, mode=ema_id, title=text_trans)

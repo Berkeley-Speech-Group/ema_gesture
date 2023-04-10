@@ -146,11 +146,14 @@ class AE_CSNMF2(nn.Module):
             kmeans_centers = torch.from_numpy(np.load('kmeans_centers_60.npy')) #[40, 12*41=492]
         elif self.num_gestures == 80:
             kmeans_centers = torch.from_numpy(np.load('kmeans_centers_80.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 12:
+            kmeans_centers = torch.from_numpy(np.load('kmeans_centers_art_2.npy')) #[40, 12*41=492]
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
         kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
 
         self.conv_decoder_weight = nn.Parameter(kmeans_centers)
         self.gesture_weight = self.conv_decoder_weight
+        self.gesture_weight_before = self.conv_decoder_weight.clone()
 
         if self.pr_joint:
             self.pr_model = PR_Model(**args)
