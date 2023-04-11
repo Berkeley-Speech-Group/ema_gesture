@@ -263,9 +263,20 @@ class AE_CSNMF3(nn.Module):
         elif self.num_gestures == 12:
             kmeans_centers = torch.from_numpy(np.load('kmeans_centers_art_2.npy')) #[40, 12*41=492]
         kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
-        kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
+        kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]  #[#num_pellets, #num_gestures, 41]
+        
 
-        self.conv_decoder_weight = nn.Parameter(kmeans_centers)
+        self.conv_decoder_weight = nn.Parameter(kmeans_centers).cuda()
+        
+        
+        self.gesture_weight1 = self.conv_decoder_weight[:2, :2, :]
+        self.gesture_weight2 = self.conv_decoder_weight[2:4, 2:4, :]
+        self.gesture_weight3 = self.conv_decoder_weight[4:6, 4:6, :]
+        self.gesture_weight4 = self.conv_decoder_weight[6:8, 6:8, :]
+        self.gesture_weight5 = self.conv_decoder_weight[8:10, 8:10, :]
+        self.gesture_weight6 = self.conv_decoder_weight[10:12, 10:12, :]
+        
+        
         self.gesture_weight = self.conv_decoder_weight
         self.gesture_weight_before = self.conv_decoder_weight.clone()
 
@@ -277,32 +288,32 @@ class AE_CSNMF3(nn.Module):
         x = x.transpose(-1, -2) #[B, 12, t]
         
         x1 = x[:, :2, :]
-        H1 = F.relu(self.conv_encoder1_1(x1)) #[B, 2, t]
+        H1 = self.conv_encoder1_1(x1) #[B, 2, t]
         H1 = F.relu(self.conv_encoder2_1(H1)) #[B, 2, t]
         H1 = F.relu(self.conv_encoder3_1(H1)) #[B, 2, t] . #Three encoder layer is the best!
         
         x2 = x[:, 2:4, :]
-        H2 = F.relu(self.conv_encoder1_2(x2)) #[B, 2, t]
+        H2 = self.conv_encoder1_2(x2) #[B, 2, t]
         H2 = F.relu(self.conv_encoder2_2(H2)) #[B, 2, t]
         H2 = F.relu(self.conv_encoder3_2(H2)) #[B, 2, t] . #Three encoder layer is the best!
         
         x3 = x[:, 4:6, :]
-        H3 = F.relu(self.conv_encoder1_3(x3)) #[B, 2, t]
+        H3 = self.conv_encoder1_3(x3) #[B, 2, t]
         H3 = F.relu(self.conv_encoder2_3(H3)) #[B, 2, t]
         H3 = F.relu(self.conv_encoder3_3(H3)) #[B, 2, t] . #Three encoder layer is the best!
         
         x4 = x[:, 6:8, :]
-        H4 = F.relu(self.conv_encoder1_4(x4)) #[B, 2, t]
+        H4 = self.conv_encoder1_4(x4) #[B, 2, t]
         H4 = F.relu(self.conv_encoder2_4(H4)) #[B, 2, t]
         H4 = F.relu(self.conv_encoder3_4(H4)) #[B, 2, t] . #Three encoder layer is the best!
         
         x5 = x[:, 8:10, :]
-        H5 = F.relu(self.conv_encoder1_5(x5)) #[B, 2, t]
+        H5 = self.conv_encoder1_5(x5) #[B, 2, t]
         H5 = F.relu(self.conv_encoder2_5(H5)) #[B, 2, t]
         H5 = F.relu(self.conv_encoder3_5(H5)) #[B, 2, t] . #Three encoder layer is the best!
         
         x6 = x[:, 10:12, :]
-        H6 = F.relu(self.conv_encoder1_6(x6)) #[B, 2, t]
+        H6 = self.conv_encoder1_6(x6) #[B, 2, t]
         H6 = F.relu(self.conv_encoder2_6(H6)) #[B, 2, t]
         H6 = F.relu(self.conv_encoder3_6(H6)) #[B, 2, t] . #Three encoder layer is the best!
         
@@ -312,7 +323,17 @@ class AE_CSNMF3(nn.Module):
         sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
         sparsity_c = sparsity_c.mean() #[B, T] -> [B]
         sparsity_t = sparsity_t.mean() #[B, D] -> [B]
-        inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
+        
+        inp_hat1 = F.conv1d(H1, self.gesture_weight1.flip(2), padding=20)  #[B, 2, t]
+        inp_hat2 = F.conv1d(H2, self.gesture_weight2.flip(2), padding=20)
+        inp_hat3 = F.conv1d(H3, self.gesture_weight3.flip(2), padding=20)
+        inp_hat4 = F.conv1d(H4, self.gesture_weight4.flip(2), padding=20)
+        inp_hat5 = F.conv1d(H5, self.gesture_weight5.flip(2), padding=20)
+        inp_hat6 = F.conv1d(H6, self.gesture_weight6.flip(2), padding=20)
+        
+        inp_hat = torch.cat((inp_hat1, inp_hat2, inp_hat3, inp_hat4, inp_hat5, inp_hat6), dim=1)
+        
+#         inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
 
         return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
 
