@@ -176,7 +176,7 @@ for spk_id in tqdm(os.listdir(path)):
         #ema_npy = (ema_npy - global_min.reshape(1, -1)) / (global_max.reshape(1, -1) - global_min.reshape(1, -1))
         #ema_npy = (ema_npy - global_min.reshape(1, -1))
        
-        ema_npy = ema_npy - global_min
+#         ema_npy = ema_npy - global_min
         feature_0.append(ema_npy[0])
         feature_1.append(ema_npy[1])
         feature_2.append(ema_npy[2])
@@ -211,7 +211,9 @@ feature_9 = np.concatenate(feature_9, axis=0)
 feature_10 = np.concatenate(feature_10, axis=0)
 feature_11 = np.concatenate(feature_11, axis=0)
 feature_all = np.concatenate(feature_all, axis=0)
+
 plt.hist(feature_0, 20)
+
 plt.title("feature_0, after")
 plt.savefig("feature_0_after.png")
 plt.clf()
