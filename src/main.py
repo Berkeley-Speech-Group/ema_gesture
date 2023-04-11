@@ -11,7 +11,7 @@ import torch.nn.functional as F
 # from torchnmf.metrics import kl_div
 
 from dataloader import EMA_Dataset, collate
-from models.csnmf import AE_CSNMF2, PR_Model
+from models.csnmf import AE_CSNMF2, AE_CSNMF3, PR_Model
 from trainer import trainer_resynthesis, trainer_pr, eval_resynthesis, eval_pr
 from utils import vis_gestures, vis_kinematics, vis_H
 import seaborn as sns
@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(description = "main python code")
 parser.add_argument('--batch_size', type=int, default=16, help='')
 parser.add_argument('--num_pellets', type=int, default=12, help='')
 parser.add_argument('--num_gestures', type=int, default=40, help='')
+parser.add_argument('--num_factors', type=int, default=2, help='')
 parser.add_argument('--win_size', type=int, default=41, help='')
 parser.add_argument('--segment_len', type=int, default=100, help='')
 parser.add_argument('--num_epochs', type=int, default=500, help='')
@@ -69,6 +70,7 @@ parser.add_argument('--asr_wav', action='store_true', help='')
 parser.add_argument('--asr_ema', action='store_true', help='')
 parser.add_argument('--asr_h', action='store_true', help='')
 parser.add_argument('--resynthesis', action='store_true', help='')
+parser.add_argument('--resynthesis2', action='store_true', help='')
 parser.add_argument('--vq', action='store_true', help='')
 parser.add_argument('--vq_only', action='store_true', help='to test the clustering performance')
 parser.add_argument('--eval_pr', action='store_true', help='')
@@ -93,6 +95,8 @@ if __name__ == "__main__":
         model = PR_Model(**vars(args)).to(device)
     elif args.resynthesis:
         model = AE_CSNMF2(**vars(args)).to(device)
+    elif args.resynthesis2:
+        model = AE_CSNMF3(**vars(args)).to(device)
     else:
         print("Error!!! No Model Specified!!")
         exit()
@@ -147,7 +151,7 @@ if __name__ == "__main__":
 
     if args.pr_mel or args.pr_ema or args.pr_stft or args.pr_wav2vec2 or args.pr_mfcc:
         trainer_pr(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
-    elif args.resynthesis:
+    elif args.resynthesis or args.resynthesis2:
         trainer_resynthesis(model, optimizer, lr_scheduler, ema_dataloader_train, ema_dataloader_test, device, training_size, **vars(args))
     else:
         print("Error happens! No Training Function Specified!")

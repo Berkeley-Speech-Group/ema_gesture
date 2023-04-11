@@ -203,6 +203,134 @@ class AE_CSNMF2(nn.Module):
                 print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
                 continue
             self_state[name].copy_(param)
+            
+            
+class AE_CSNMF3(nn.Module):
+    def __init__(self, **args):
+        super().__init__()
+
+        self.win_size = args['win_size']
+        self.t = args['segment_len']
+        self.num_pellets = args['num_pellets']
+        self.num_gestures = args['num_gestures']
+        
+        self.num_factors = args['num_factors']
+        
+        #art1
+        self.conv_encoder1_1 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder2_1 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3_1 = nn.Conv1d(in_channels=2,out_channels=self.num_factors,kernel_size=3,padding=1)
+        
+        #art2
+        self.conv_encoder1_2 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder2_2 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3_2 = nn.Conv1d(in_channels=2,out_channels=self.num_factors,kernel_size=3,padding=1)
+        
+        #art3
+        self.conv_encoder1_3 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder2_3 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3_3 = nn.Conv1d(in_channels=2,out_channels=self.num_factors,kernel_size=3,padding=1)
+        
+        #art4
+        self.conv_encoder1_4 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder2_4 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3_4 = nn.Conv1d(in_channels=2,out_channels=self.num_factors,kernel_size=3,padding=1)
+        
+        #art5
+        self.conv_encoder1_5 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder2_5 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3_5 = nn.Conv1d(in_channels=2,out_channels=self.num_factors,kernel_size=3,padding=1)
+        
+        #art6
+        self.conv_encoder1_6 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=15,padding=7) #larger is better
+        self.conv_encoder2_6 = nn.Conv1d(in_channels=2,out_channels=2,kernel_size=3,padding=1) #smaller is better
+        self.conv_encoder3_6 = nn.Conv1d(in_channels=2,out_channels=self.num_factors,kernel_size=3,padding=1)
+        
+        self.sparse_c_base = args['sparse_c_base']
+        self.sparse_t_base = args['sparse_t_base']
+        
+        self.fixed_length = args['fixed_length']
+
+        ######Apply weights of k-means to gestures
+        if self.num_gestures == 20:
+            kmeans_centers = torch.from_numpy(np.load('kmeans_centers_20.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 40:
+            kmeans_centers = torch.from_numpy(np.load('kmeans_centers_40.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 60:
+            kmeans_centers = torch.from_numpy(np.load('kmeans_centers_60.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 80:
+            kmeans_centers = torch.from_numpy(np.load('kmeans_centers_80.npy')) #[40, 12*41=492]
+        elif self.num_gestures == 12:
+            kmeans_centers = torch.from_numpy(np.load('kmeans_centers_art_2.npy')) #[40, 12*41=492]
+        kmeans_centers = kmeans_centers.reshape(self.num_gestures, self.num_pellets, 41)#[40, 12, 41]
+        kmeans_centers = kmeans_centers.permute(1,0,2) #[12,40,41]
+
+        self.conv_decoder_weight = nn.Parameter(kmeans_centers)
+        self.gesture_weight = self.conv_decoder_weight
+        self.gesture_weight_before = self.conv_decoder_weight.clone()
+
+
+    def forward(self, x, ema_inp_lens):
+        #shape of x is [B,t,A]
+
+        time_steps = x.shape[1]
+        x = x.transpose(-1, -2) #[B, 12, t]
+        
+        x1 = x[:, :2, :]
+        H1 = F.relu(self.conv_encoder1_1(x1)) #[B, 2, t]
+        H1 = F.relu(self.conv_encoder2_1(H1)) #[B, 2, t]
+        H1 = F.relu(self.conv_encoder3_1(H1)) #[B, 2, t] . #Three encoder layer is the best!
+        
+        x2 = x[:, 2:4, :]
+        H2 = F.relu(self.conv_encoder1_2(x2)) #[B, 2, t]
+        H2 = F.relu(self.conv_encoder2_2(H2)) #[B, 2, t]
+        H2 = F.relu(self.conv_encoder3_2(H2)) #[B, 2, t] . #Three encoder layer is the best!
+        
+        x3 = x[:, 4:6, :]
+        H3 = F.relu(self.conv_encoder1_3(x3)) #[B, 2, t]
+        H3 = F.relu(self.conv_encoder2_3(H3)) #[B, 2, t]
+        H3 = F.relu(self.conv_encoder3_3(H3)) #[B, 2, t] . #Three encoder layer is the best!
+        
+        x4 = x[:, 6:8, :]
+        H4 = F.relu(self.conv_encoder1_4(x4)) #[B, 2, t]
+        H4 = F.relu(self.conv_encoder2_4(H4)) #[B, 2, t]
+        H4 = F.relu(self.conv_encoder3_4(H4)) #[B, 2, t] . #Three encoder layer is the best!
+        
+        x5 = x[:, 8:10, :]
+        H5 = F.relu(self.conv_encoder1_5(x5)) #[B, 2, t]
+        H5 = F.relu(self.conv_encoder2_5(H5)) #[B, 2, t]
+        H5 = F.relu(self.conv_encoder3_5(H5)) #[B, 2, t] . #Three encoder layer is the best!
+        
+        x6 = x[:, 10:12, :]
+        H6 = F.relu(self.conv_encoder1_6(x6)) #[B, 2, t]
+        H6 = F.relu(self.conv_encoder2_6(H6)) #[B, 2, t]
+        H6 = F.relu(self.conv_encoder3_6(H6)) #[B, 2, t] . #Three encoder layer is the best!
+        
+        H = torch.cat((H1, H2, H3, H4, H5, H6), dim=1)
+
+        latent_H = H
+        sparsity_c, sparsity_t, entropy_t, entropy_c = get_sparsity(H)
+        sparsity_c = sparsity_c.mean() #[B, T] -> [B]
+        sparsity_t = sparsity_t.mean() #[B, D] -> [B]
+        inp_hat = F.conv1d(H, self.gesture_weight.flip(2), padding=20)
+
+        return x, inp_hat, latent_H, sparsity_c, sparsity_t, entropy_t, entropy_c
+
+    def loadParameters(self, path):
+        self_state = self.state_dict()
+        loaded_state = torch.load(path)
+        for name, param in loaded_state.items():
+            origname = name
+            if name not in self_state:
+                name = name.replace("module.", "")
+                if name not in self_state:
+                    print("%s is not in the model."%origname)
+                    continue
+            if self_state[name].size() != loaded_state[origname].size():
+                print("Wrong parameter length: %s, model: %s, loaded: %s"%(origname, self_state[name].size(), loaded_state[origname].size()));
+                continue
+            self_state[name].copy_(param)
+
 
 
 
